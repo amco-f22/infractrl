@@ -1,0 +1,104 @@
+name: Provision Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        description: 'Database Request ID (UUID)'
+        required: true
+        type: string
+      resource_type:
+        description: 'Resource Type (postgres, redis, s3)'
+        required: true
+        type: string
+      instance_size:
+        description: 'Instance Size (small, medium, large)'
+        required: true
+        type: string
+      email:
+        description: 'Requester Email'
+        required: true
+        type: string
+      environment:
+        description: 'Environment (dev, staging, prod)'
+        required: true
+        type: string
+
+# Required for OIDC token generation (keyless auth — no stored AWS keys)
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  provision:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    timeout-minutes: 20 # RDS takes 5-10 min; default 360 is too generous
+    concurrency:
+      group: provision-${{ github.event.inputs.request_id }}
+      cancel-in-progress: false # Don't cancel a running provision
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # ===========================================================================
+      # OIDC Authentication: No long-lived AWS access keys stored in GitHub Secrets.
+      # Grants a short-lived token scoped to this run only.
+      # SETUP: Create an IAM Role with a GitHub OIDC trust policy and add its ARN
+      # to GitHub Secrets as GH_ACTIONS_ROLE_ARN.
+      # Guide: https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
+      # ===========================================================================
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.GH_ACTIONS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ">= 1.0"
+
+      - name: Terraform Init (with per-request remote state)
+        working-directory: ./terraform
+        # Each request gets its OWN isolated state file in S3.
+        # This prevents concurrent provisioning runs from conflicting.
+        run: |
+          terraform init \
+            -backend-config="key=state/${{ github.event.inputs.request_id }}.tfstate"
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: |
+          terraform apply -auto-approve \
+            -var="request_id=${{ github.event.inputs.request_id }}" \
+            -var="resource_type=${{ github.event.inputs.resource_type }}" \
+            -var="instance_size=${{ github.event.inputs.instance_size }}" \
+            -var="requester_email=${{ github.event.inputs.email }}" \
+            -var="environment=${{ github.event.inputs.environment }}"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Get Terraform Outputs and Update Status
+        working-directory: ./terraform
+        env:
+          REQUEST_ID: ${{ github.event.inputs.request_id }}
+          API_URL: ${{ secrets.PROD_API_URL }}
+        run: |
+          export TF_OUT_CONNECTION_STRING=$(terraform output -raw connection_string)
+          export TF_OUT_AWS_RESOURCE_ID=$(terraform output -raw aws_resource_id)
+          cd ../
+          python .github/scripts/update_status.py
+
+      # On failure, update the request status to 'failed' so the dashboard reflects it
+      - name: Update Status to Failed (on error)
+        if: failure()
+        env:
+          REQUEST_ID: ${{ github.event.inputs.request_id }}
+          API_URL: ${{ secrets.PROD_API_URL }}
+          FAILED: "true"
+        run: python .github/scripts/update_status.py

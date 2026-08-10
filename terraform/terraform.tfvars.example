@@ -1,0 +1,26 @@
+# ==============================================================================
+# Example Terraform variables file for InfraCtrl
+# ==============================================================================
+# INSTRUCTIONS:
+# 1. Copy this file: cp terraform.tfvars.example terraform.tfvars
+# 2. Edit terraform.tfvars with real values from your database
+# 3. Run terraform plan/apply
+#
+# IMPORTANT: Never commit terraform.tfvars to git as it contains real 
+# request IDs and configuration details.
+# ==============================================================================
+
+# Replace with actual UUID from database requests table
+request_id = "123e4567-e89b-12d3-a456-426614174000"
+
+# Options: small, medium, large
+instance_size = "small"
+
+# Email of the person requesting this resource
+requester_email = "aman@example.com"
+
+# Options: dev, staging, prod
+environment = "dev"
+
+# AWS region to deploy to
+aws_region = "us-east-1"

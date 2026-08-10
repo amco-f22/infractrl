@@ -1,0 +1,93 @@
+name: Cleanup & Expiry Notifications
+
+on:
+  # Run cleanup at 2 AM UTC daily
+  schedule:
+    - cron: '0 2 * * *'
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  budget-alerts:
+    name: Check Budget Limits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install psycopg2-binary python-dotenv
+
+      - name: Run Budget Check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          BUDGET_LIMIT_PER_USER: "200"
+        run: python scripts/check_budgets.py
+
+  expiry-warnings:
+    name: Send 24h Expiry Warnings
+    runs-on: ubuntu-latest
+    needs: budget-alerts
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install psycopg2-binary python-dotenv
+
+      - name: Run Expiry Notifier
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python scripts/notify_expiry.py
+
+  cleanup:
+    name: Destroy Expired Resources
+    runs-on: ubuntu-latest
+    needs: expiry-warnings
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.GH_ACTIONS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ">= 1.0"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install psycopg2-binary python-dotenv
+
+      - name: Run Cleanup Script
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TF_STATE_BUCKET: infractl-terraform-state
+          AWS_REGION: us-east-1
+        run: python scripts/cleanup.py

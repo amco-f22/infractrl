@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+
+@theme {
+  --color-background-start: #0a0f1e;
+  --color-background-end: #0a0f1e;
+  --color-foreground: rgb(248, 250, 252);
+}
+
+:root {
+  --background: #0a0f1e;
+  --foreground: rgb(248, 250, 252);
+  --accent-blue: #3b82f6;
+  --accent-purple: #8b5cf6;
+  --accent-cyan: #06b6d4;
+}
+
+.nav-link {
+  color: rgba(148, 163, 184, 0.9);
+  transition: color 0.2s;
+}
+.nav-link:hover {
+  color: white;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  /* Animated gradient mesh background */
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -20%, rgba(59, 130, 246, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 120%, rgba(139, 92, 246, 0.1) 0%, transparent 60%);
+  background-attachment: fixed;
+}
+
+/* ===== UTILITIES ===== */
+
+@utility btn-primary {
+  @apply font-semibold text-white rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  box-shadow: 0 4px 24px rgba(59, 130, 246, 0.35);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 6px 32px rgba(59, 130, 246, 0.55);
+}
+
+@utility input-field {
+  @apply w-full rounded-xl px-4 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none transition-all duration-200;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.input-field:focus {
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+@utility label-text {
+  @apply block text-xs font-semibold uppercase tracking-wider mb-2;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+@utility glass-card {
+  @apply rounded-2xl;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@utility glass-card-solid {
+  @apply rounded-2xl;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Status badge glow effects */
+@utility badge-ready {
+  @apply rounded-full px-3 py-1 text-xs font-semibold;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+@utility badge-provisioning {
+  @apply rounded-full px-3 py-1 text-xs font-semibold;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  animation: pulse-blue 2s infinite;
+}
+
+@utility badge-pending {
+  @apply rounded-full px-3 py-1 text-xs font-semibold;
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+@utility badge-failed {
+  @apply rounded-full px-3 py-1 text-xs font-semibold;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+@utility badge-deleted {
+  @apply rounded-full px-3 py-1 text-xs font-semibold;
+  background: rgba(100, 116, 139, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+@keyframes pulse-blue {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+}

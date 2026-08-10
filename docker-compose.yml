@@ -1,0 +1,53 @@
+# ==============================================================================
+# InfraCtrl Local Development Infrastructure
+# ==============================================================================
+# Usage:
+#   Start:       docker-compose up -d
+#   Stop:        docker-compose down
+#   View Logs:   docker-compose logs -f postgres
+#   Reset DB:    docker-compose down -v && docker-compose up -d
+#
+# Connection Details:
+#   PostgreSQL:  postgresql://postgres:postgres@localhost:5432/infractl
+#   Redis:       localhost:6379
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database: Stores requests and resource metadata
+  postgres:
+    image: postgres:15-alpine
+    container_name: infractl-postgres
+    environment:
+      - POSTGRES_DB=infractl
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Automatically initialize database with our schema on first run
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis: Key-value store for future features (caching, task queues)
+  redis:
+    image: redis:7-alpine
+    container_name: infractl-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
