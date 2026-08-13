@@ -1,0 +1,9 @@
+{
+  "BudgetName": "InfraCtrl Testing",
+  "BudgetLimit": {
+    "Amount": "10",
+    "Unit": "USD"
+  },
+  "TimeUnit": "MONTHLY",
+  "BudgetType": "COST"
+}
