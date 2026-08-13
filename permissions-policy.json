@@ -2,23 +2,13 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "RDSInstanceManagement",
+      "Sid": "RDSFullManagement",
       "Effect": "Allow",
       "Action": [
         "rds:CreateDBInstance",
         "rds:DeleteDBInstance",
         "rds:DescribeDBInstances",
         "rds:ModifyDBInstance",
-        "rds:ListTagsForResource",
-        "rds:AddTagsToResource",
-        "rds:RemoveTagsFromResource"
-      ],
-      "Resource": "arn:aws:rds:us-east-1:914194816156:db:infractl-*"
-    },
-    {
-      "Sid": "RDSSubnetGroupManagement",
-      "Effect": "Allow",
-      "Action": [
         "rds:CreateDBSubnetGroup",
         "rds:DeleteDBSubnetGroup",
         "rds:DescribeDBSubnetGroups",
@@ -26,7 +16,10 @@
         "rds:AddTagsToResource",
         "rds:RemoveTagsFromResource"
       ],
-      "Resource": "arn:aws:rds:us-east-1:914194816156:subgrp:infractl-*"
+      "Resource": [
+        "arn:aws:rds:us-east-1:914194816156:db:infractl-*",
+        "arn:aws:rds:us-east-1:914194816156:subgrp:infractl-*"
+      ]
     },
     {
       "Sid": "EC2NetworkAndSecurityGroup",
