@@ -76,7 +76,7 @@ def destroy_infrastructure(request):
             f"-backend-config=bucket={S3_STATE_BUCKET}",
             f"-backend-config=key={state_key}",
             f"-backend-config=region={AWS_REGION}",
-            f"-backend-config=dynamodb_table=infractl-terraform-locks",
+            f"-backend-config=use_lockfile=true",
             f"-backend-config=encrypt=true"
         ]
         subprocess.run(init_cmd, cwd=TERRAFORM_DIR, check=True, capture_output=True)
