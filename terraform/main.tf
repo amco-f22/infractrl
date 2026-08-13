@@ -172,7 +172,7 @@ resource "aws_db_instance" "postgres" {
 
   identifier              = "infractl-${var.request_id}"
   engine                  = "postgres"
-  engine_version          = "15.4"
+  engine_version          = "16.14"
   instance_class          = local.rds_instance_class
   allocated_storage       = 20
   max_allocated_storage   = 100
