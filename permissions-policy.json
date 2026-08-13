@@ -2,24 +2,41 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "RDSFullManagement",
+      "Sid": "RDSManageInfraCtlResources",
       "Effect": "Allow",
       "Action": [
         "rds:CreateDBInstance",
         "rds:DeleteDBInstance",
-        "rds:DescribeDBInstances",
         "rds:ModifyDBInstance",
+        "rds:RebootDBInstance",
         "rds:CreateDBSubnetGroup",
         "rds:DeleteDBSubnetGroup",
-        "rds:DescribeDBSubnetGroups",
-        "rds:ListTagsForResource",
+        "rds:ModifyDBSubnetGroup",
         "rds:AddTagsToResource",
         "rds:RemoveTagsFromResource"
       ],
       "Resource": [
         "arn:aws:rds:us-east-1:914194816156:db:infractl-*",
-        "arn:aws:rds:us-east-1:914194816156:subgrp:infractl-*"
+        "arn:aws:rds:us-east-1:914194816156:subgrp:infractl-*",
+        "arn:aws:rds:us-east-1:914194816156:pg:*",
+        "arn:aws:rds:us-east-1:914194816156:og:*"
       ]
+    },
+    {
+      "Sid": "RDSReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeDBInstances",
+        "rds:DescribeDBSubnetGroups",
+        "rds:DescribeDBParameterGroups",
+        "rds:DescribeDBEngineVersions",
+        "rds:DescribeOrderableDBInstanceOptions",
+        "rds:DescribeOptionGroups",
+        "rds:DescribeEventSubscriptions",
+        "rds:DescribeCertificates",
+        "rds:ListTagsForResource"
+      ],
+      "Resource": "*"
     },
     {
       "Sid": "EC2NetworkAndSecurityGroup",
@@ -31,6 +48,8 @@
         "ec2:AuthorizeSecurityGroupEgress",
         "ec2:RevokeSecurityGroupIngress",
         "ec2:RevokeSecurityGroupEgress",
+        "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
+        "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
         "ec2:DescribeSecurityGroups",
         "ec2:DescribeSecurityGroupRules",
         "ec2:DescribeVpcs",
@@ -38,6 +57,9 @@
         "ec2:DescribeSubnets",
         "ec2:DescribeAvailabilityZones",
         "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeRouteTables",
         "ec2:CreateTags",
         "ec2:DeleteTags"
       ],
@@ -50,7 +72,9 @@
         "s3:GetObject",
         "s3:PutObject",
         "s3:DeleteObject",
-        "s3:ListBucket"
+        "s3:ListBucket",
+        "s3:GetBucketVersioning",
+        "s3:GetBucketLocation"
       ],
       "Resource": [
         "arn:aws:s3:::infractl-terraform-state",
