@@ -280,3 +280,32 @@ Before your first real AWS test, confirm every item:
 [ ] 15. Check AWS Console — verify RDS instance is gone
 ```
 
+---
+
+## 🛠️ August 2026 Production Fixes
+
+During the initial end-to-end testing phase, several critical adjustments were made to the infrastructure and permissions to ensure a robust production pipeline. **All future AI agents working on this project must reference these updates:**
+
+### 1. GitHub Actions & OIDC
+- **Node 24 Compatibility**: Upgraded `aws-actions/configure-aws-credentials` from `v4` to `v6` in both `provision.yml` and `cleanup.yml` to resolve Node 20 deprecation issues.
+- **OIDC Subject Format**: GitHub updated its OIDC token `sub` claim format to include numeric IDs (e.g., `repo:amco-f22@212533111/infractrl@...`). The IAM Trust Policy (`trust-policy.json`) was updated to use `repo:amco-f22*/infractrl*:*` to accommodate this change.
+
+### 2. AWS IAM Permissions Policy (`permissions-policy.json`)
+The Terraform IAM policy was upgraded to a comprehensive configuration (v5) covering all edge cases:
+- **RDS Management**: `rds:CreateDBInstance` requires permissions on *both* the `db` instance and `subgrp` (Subnet Group) ARNs. These statements were merged. Added `rds:ListTagsForResource` for subnet groups.
+- **RDS Read-Only**: Added `DescribeDBParameterGroups`, `DescribeDBEngineVersions`, `DescribeOptionGroups`, etc., required for Terraform's pre-flight validation.
+- **EC2 Read-Only**: Added `DescribeVpcAttribute`, `DescribeSecurityGroupRules`, `DescribeNetworkInterfaces`, and routing/gateway describe permissions required to read default VPC data.
+- **S3 Backend**: Added `s3:GetBucketVersioning` and `s3:GetBucketLocation` for Terraform state initialization.
+
+### 3. Terraform Backend Configuration
+- **Deprecation Fix**: Replaced the deprecated `dynamodb_table` parameter with `use_lockfile = true` in `terraform/main.tf` and `scripts/cleanup.py` (which leverages the new native S3 backend locking mechanism).
+- **State Infra**: Explicitly created the `infractl-terraform-state` S3 bucket (with versioning) and `infractl-terraform-locks` DynamoDB table via AWS CLI.
+
+### 4. RDS Engine Updates
+- **Engine Version**: PostgreSQL `15.4` was deprecated by AWS. Updated `engine_version` to `16.14` (latest stable).
+- **Reserved Usernames**: PostgreSQL 16+ reserves the `admin` username. Changed the RDS master username to `infraadmin`. (Updated in `main.tf` and the connection string output).
+
+### 5. Localhost API Limitation (GitHub Actions)
+- The GitHub Actions workflow updates the database status via a Python script (`update_status.py`) sending requests to `PROD_API_URL` (passed via GitHub Secrets).
+- If the backend is running locally on `localhost:8000`, the GitHub Actions runner (in the cloud) **cannot** reach it, resulting in a failed status update and the `aws_resource_id` remaining null in the database.
+- **Fix**: The backend must be publicly deployed (e.g., to Render/AWS) or a tunneling tool like ngrok must be used to provide a public URL to the GitHub Actions runner.
