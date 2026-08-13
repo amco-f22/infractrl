@@ -178,7 +178,7 @@ resource "aws_db_instance" "postgres" {
   max_allocated_storage   = 100
   storage_type            = "gp3"
   db_name                 = "postgres"
-  username                = "admin"
+  username                = "infraadmin"
   password                = random_password.db_password[0].result
   publicly_accessible     = var.allowed_ip != "" ? true : false
   vpc_security_group_ids  = var.allowed_ip != "" ? [aws_security_group.rds_access[0].id] : []
@@ -227,7 +227,7 @@ output "endpoint" {
 
 output "connection_string" {
   description = "Full connection string (postgres only)"
-  value       = var.resource_type == "postgres" ? "postgresql://admin:${random_password.db_password[0].result}@${aws_db_instance.postgres[0].endpoint}/postgres" : "N/A"
+  value       = var.resource_type == "postgres" ? "postgresql://infraadmin:${random_password.db_password[0].result}@${aws_db_instance.postgres[0].endpoint}/postgres" : "N/A"
   sensitive   = true
 }
 
