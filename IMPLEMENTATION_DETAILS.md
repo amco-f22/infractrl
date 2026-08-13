@@ -217,7 +217,6 @@ The role uses `InfraCtrlMinimalPolicy` — **not** `AdministratorAccess`. Three 
 - **`RDSSubnetGroupManagement`**: `rds:Create/Delete/DescribeDBSubnetGroups`, tagging — scoped to `arn:aws:rds:*:*:subgrp:infractl-*`
 - **`EC2NetworkAndSecurityGroup`**: SG CRUD + `ec2:DescribeVpcs`, `ec2:DescribeSubnets`, `ec2:DescribeAvailabilityZones` — `Resource: "*"` (AWS requires account-wide scope for Describe calls)
 - **`TerraformStateAccess`**: `s3:Get/Put/Delete` scoped to the state bucket only
-- **`TerraformStateLocking`**: `dynamodb:Get/Put/DeleteItem` scoped to the lock table only
 
 ---
 
@@ -263,7 +262,7 @@ The dashboard shows **estimated** costs based on hardcoded AWS list prices (`sma
 Before your first real AWS test, confirm every item:
 
 ```
-[ ] 1. Run scripts/bootstrap_aws.sh (creates S3 bucket, DynamoDB, OIDC, IAM role)
+[ ] 1. Run scripts/bootstrap_aws.sh (creates S3 bucket, OIDC, IAM role)
 [ ] 2. Add GH_ACTIONS_ROLE_ARN to GitHub Secrets
 [ ] 3. Add PROD_API_URL to GitHub Secrets (your deployed backend URL)
 [ ] 4. Add DATABASE_URL to GitHub Secrets (for cleanup workflow)
@@ -299,7 +298,7 @@ The Terraform IAM policy was upgraded to a comprehensive configuration (v5) cove
 
 ### 3. Terraform Backend Configuration
 - **Deprecation Fix**: Replaced the deprecated `dynamodb_table` parameter with `use_lockfile = true` in `terraform/main.tf` and `scripts/cleanup.py` (which leverages the new native S3 backend locking mechanism).
-- **State Infra**: Explicitly created the `infractl-terraform-state` S3 bucket (with versioning) and `infractl-terraform-locks` DynamoDB table via AWS CLI.
+- **State Infra**: Explicitly created the `infractl-terraform-state` S3 bucket (with versioning) via AWS CLI.
 
 ### 4. RDS Engine Updates
 - **Engine Version**: PostgreSQL `15.4` was deprecated by AWS. Updated `engine_version` to `16.14` (latest stable).

@@ -42,19 +42,7 @@ aws s3api put-bucket-encryption \
 echo "  ✅ S3 bucket ready (versioned + encrypted)"
 
 # --------------------------------------------------------------------------
-# 2. Create DynamoDB table for state locking
-# --------------------------------------------------------------------------
-echo "[2/4] Creating DynamoDB lock table: $LOCK_TABLE..."
-aws dynamodb create-table \
-  --table-name "$LOCK_TABLE" \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region "$REGION" \
-  2>/dev/null || echo "  Table already exists — OK"
-
-echo "  ✅ DynamoDB lock table ready"
-
+# 2. (Removed) DynamoDB lock table is no longer needed (using S3 use_lockfile)
 # --------------------------------------------------------------------------
 # 3. Create GitHub OIDC provider (if not exists)
 # --------------------------------------------------------------------------
@@ -165,16 +153,6 @@ PERMISSIONS_POLICY=$(cat <<EOF
         "arn:aws:s3:::${STATE_BUCKET}",
         "arn:aws:s3:::${STATE_BUCKET}/*"
       ]
-    },
-    {
-      "Sid": "TerraformStateLocking",
-      "Effect": "Allow",
-      "Action": [
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:DeleteItem"
-      ],
-      "Resource": "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${LOCK_TABLE}"
     }
   ]
 }
