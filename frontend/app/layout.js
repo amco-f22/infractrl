@@ -1,55 +1,62 @@
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans, Cormorant_Garamond, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import Link from "next/link";
+import Providers from "./providers";
+import AppHeader from "@/components/AppHeader";
+import { Toaster } from "sonner";
 
-const inter = Inter({
+const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
-  variable: "--font-inter",
+  variable: "--font-sans",
+});
+
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-editorial",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-mono",
 });
 
 export const metadata = {
   title: "InfraCtrl | Developer Self-Service Infrastructure",
-  description: "Provision PostgreSQL, Redis, and S3 resources in seconds. Self-service ephemeral infrastructure with automated lifecycle management.",
+  description: "Request cloud databases in 5 minutes, not 5 days. Self-service ephemeral infrastructure with automated Terraform provisioning and live cost metering.",
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.ico",
+    apple: "/logo-icon.png",
+  },
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}>
-        <nav className="fixed top-0 w-full z-50" style={{
-          background: 'rgba(10, 15, 30, 0.8)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
-        }}>
-          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-sm"
-                style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)', boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)' }}>
-                IC
-              </div>
-              <span className="text-lg font-bold tracking-tight text-white">InfraCtrl</span>
-              <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                BETA
-              </span>
-            </Link>
-            <div className="flex items-center gap-6">
-              <Link href="/" className="nav-link text-sm font-medium">
-                New Request
-              </Link>
-              <Link href="/dashboard"
-                className="text-sm font-semibold text-white px-4 py-2 rounded-lg transition-all"
-                style={{ background: 'rgba(59, 130, 246, 0.2)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                Dashboard
-              </Link>
-            </div>
-          </div>
-        </nav>
-        <main className="min-h-screen pt-16">
-          {children}
-        </main>
+    <html lang="en" className={`${plusJakarta.variable} ${cormorant.variable} ${jetbrainsMono.variable}`}>
+      <body className="antialiased min-h-screen bg-black text-white selection:bg-cyan-400/30 font-sans">
+        <Providers>
+          <AppHeader />
+          <main className="min-h-screen">
+            {children}
+          </main>
+        </Providers>
+
+        {/* Global Toast Engine */}
+        <Toaster
+          theme="dark"
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: '#0a0a0c',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#f8fafc',
+              boxShadow: '0 10px 30px -5px rgba(0,0,0,0.9), 0 0 20px rgba(45, 212, 191, 0.15)',
+            },
+          }}
+        />
       </body>
     </html>
   );

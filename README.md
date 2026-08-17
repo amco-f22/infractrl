@@ -149,7 +149,7 @@ Contributions are welcome! If you'd like to improve InfraCtrl, please:
 Distributed under the **MIT License**. See `LICENSE` for more information.
 
 ## Author
-**Aman Kumar**
-- Final year B.Tech, DIT University
+**Aman Nikhare**
+- DevOps & Cloud Engineer
 - **GitHub**: [@amco-f22](https://github.com/amco-f22)
 - **LinkedIn**: [linkedin.com/in/amco-f22](https://linkedin.com/in/amco-f22)

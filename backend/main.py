@@ -1,4 +1,5 @@
 import os
+import re
 import json
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -6,10 +7,12 @@ from typing import List, Optional
 import psycopg2
 import httpx
 from psycopg2.extras import RealDictCursor
-from fastapi import FastAPI, HTTPException, status, BackgroundTasks
+from fastapi import FastAPI, HTTPException, status, BackgroundTasks, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from dotenv import load_dotenv
+
+from policy_engine import evaluate_request, RequestContext, ApprovalDecision
 
 # Load environment variables
 load_dotenv()
@@ -17,9 +20,11 @@ load_dotenv()
 app = FastAPI(title="InfraCtrl API")
 
 # CORS Configuration
+FRONTEND_URLS = [url.strip() for url in os.getenv("FRONTEND_URLS", "http://localhost:3000").split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=FRONTEND_URLS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,6 +40,13 @@ PRICING = {
     "s3":       {"small": 5,  "medium": 15, "large": 30},
 }
 BUDGET_LIMIT_PER_USER = int(os.getenv("BUDGET_LIMIT_PER_USER", "200"))
+WEBHOOK_API_KEY = os.getenv("WEBHOOK_API_KEY", "dev-webhook-key")
+
+def mask_connection_string(conn_str):
+    """Mask the password in a connection string for safe display."""
+    if not conn_str:
+        return None
+    return re.sub(r'://([^:]+):([^@]+)@', r'://\1:***@', conn_str)
 
 def get_db_connection():
     """
@@ -95,6 +107,16 @@ class CreateRequest(BaseModel):
         if v not in ["small", "medium", "large"]:
             raise ValueError("Instance size must be small, medium, or large")
         return v
+        
+    allowed_ip: str
+
+    @field_validator('allowed_ip')
+    @classmethod
+    def validate_ip(cls, v):
+        if not v:
+            raise ValueError('IP address is required for security')
+        # Strip /32 if user included it, we'll add it in Terraform
+        return v.replace('/32', '').strip()
 
 class StatusUpdateRequest(BaseModel):
     status: str
@@ -110,7 +132,7 @@ class CloneRequest(BaseModel):
 # ========================
 # GitHub Integration
 # ========================
-async def trigger_github_workflow(request_id: str, resource_type: str, instance_size: str, email: str, environment: str):
+async def trigger_github_workflow(request_id: str, resource_type: str, instance_size: str, email: str, environment: str, allowed_ip: str):
     """Triggers the GitHub Actions provisioning workflow."""
     token = os.getenv("GITHUB_TOKEN")
     owner = os.getenv("GITHUB_OWNER")
@@ -133,7 +155,8 @@ async def trigger_github_workflow(request_id: str, resource_type: str, instance_
             "resource_type": resource_type,
             "instance_size": instance_size,
             "email": email,
-            "environment": environment
+            "environment": environment,
+            "allowed_ip": f"{allowed_ip}/32"
         }
     }
     
@@ -276,7 +299,7 @@ async def create_request(request_data: CreateRequest, background_tasks: Backgrou
     expiry_date = (datetime.now() + timedelta(days=7)).date()
     
     try:
-        # Budget check (warn but don't block)
+        # Budget and cost calculations
         cur.execute("""
             SELECT resource_type, instance_size FROM requests
             WHERE requester_email = %s AND status IN ('ready', 'provisioning')
@@ -285,16 +308,28 @@ async def create_request(request_data: CreateRequest, background_tasks: Backgrou
         active = cur.fetchall()
         current_spend = sum(estimate_cost(r["resource_type"], r["instance_size"]) for r in active)
         new_cost = estimate_cost(request_data.resource_type, request_data.instance_size)
-        budget_warning = None
-        if current_spend + new_cost > BUDGET_LIMIT_PER_USER:
-            budget_warning = f"This will put you at ${current_spend + new_cost}/${BUDGET_LIMIT_PER_USER} monthly budget."
+        user_budget_remaining = BUDGET_LIMIT_PER_USER - current_spend
+        
+        # Policy Engine Evaluation
+        req_ctx = RequestContext(
+            resource_type=request_data.resource_type,
+            environment=request_data.environment,
+            instance_size=request_data.instance_size,
+            estimated_cost=new_cost
+        )
+        decision, reason = evaluate_request(req_ctx, user_budget_remaining)
+        
+        if decision == ApprovalDecision.AUTO_DENIED:
+            raise HTTPException(status_code=400, detail=reason)
+            
+        initial_status = "provisioning" if decision == ApprovalDecision.AUTO_APPROVED else "pending_approval"
         
         # Insert the request
         query = """
             INSERT INTO requests (
                 requester_name, requester_email, resource_type,
-                environment, instance_size, expiry_date, status
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                environment, instance_size, expiry_date, status, allowed_ip
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id, status, expiry_date;
         """
         cur.execute(query, (
@@ -304,7 +339,8 @@ async def create_request(request_data: CreateRequest, background_tasks: Backgrou
             request_data.environment,
             request_data.instance_size,
             expiry_date,
-            "provisioning"
+            initial_status,
+            request_data.allowed_ip
         ))
         
         result = cur.fetchone()
@@ -312,34 +348,41 @@ async def create_request(request_data: CreateRequest, background_tasks: Backgrou
         
         # Audit log
         log_audit(conn, req_id, "created", request_data.requester_email,
-                  f"Created {request_data.resource_type}/{request_data.environment}/{request_data.instance_size}",
+                  f"Created {request_data.resource_type}/{request_data.environment}/{request_data.instance_size} ({decision.value})",
                   {"resource_type": request_data.resource_type, "environment": request_data.environment,
-                   "instance_size": request_data.instance_size, "estimated_cost": new_cost})
+                   "instance_size": request_data.instance_size, "estimated_cost": new_cost,
+                   "decision": decision.value, "reason": reason})
         
         conn.commit()
         
-        # Trigger GitHub Action in the background
-        background_tasks.add_task(
-            trigger_github_workflow, 
-            req_id, 
-            request_data.resource_type,
-            request_data.instance_size, 
-            request_data.requester_email, 
-            request_data.environment
-        )
+        # Actions based on decision
+        if decision == ApprovalDecision.AUTO_APPROVED:
+            # Trigger GitHub Action
+            background_tasks.add_task(
+                trigger_github_workflow, 
+                req_id, request_data.resource_type, request_data.instance_size, 
+                request_data.requester_email, request_data.environment, request_data.allowed_ip
+            )
+            # Slack message
+            slack_msg = f"✅ *Auto-approved*: {request_data.requester_name} requested {request_data.resource_type} ({request_data.instance_size}, {request_data.environment})\nEstimated cost: ${new_cost}/mo\nProvisioning now... (no human needed)"
+            background_tasks.add_task(send_slack_notification, slack_msg)
+        else:
+            # Pending approval Slack message
+            slack_msg = f"⏳ *Approval needed*: {request_data.requester_name} requested {request_data.resource_type} ({request_data.instance_size}, {request_data.environment})\nEstimated cost: ${new_cost}/mo\nReason: {reason}\nGo to dashboard to approve or deny."
+            background_tasks.add_task(send_slack_notification, slack_msg)
         
-        response = {
+        return {
             "id": req_id,
             "status": result["status"],
-            "message": "Request created! Provisioning workflow triggered.",
+            "message": "Request created! " + ("Provisioning workflow triggered." if decision == ApprovalDecision.AUTO_APPROVED else "Pending manual approval."),
             "expiry_date": str(result["expiry_date"]),
             "estimated_cost": new_cost,
+            "decision": decision.value,
+            "reason": reason
         }
-        if budget_warning:
-            response["budget_warning"] = budget_warning
         
-        return response
-        
+    except HTTPException:
+        raise
     except Exception as e:
         conn.rollback()
         print(f"Database error: {e}")
@@ -355,7 +398,7 @@ async def create_request(request_data: CreateRequest, background_tasks: Backgrou
 # Core: Update Status (with audit log)
 # ---------------------------------------------------------------
 @app.post("/api/requests/{request_id}/status")
-async def update_request_status(request_id: str, update_data: StatusUpdateRequest, background_tasks: BackgroundTasks):
+async def update_request_status(request_id: str, update_data: StatusUpdateRequest, background_tasks: BackgroundTasks, x_api_key: str = Header(None)):
     """
     Updates the status and connection string of a request after provisioning.
     Triggers Slack notification if status is 'ready'.
@@ -364,6 +407,10 @@ async def update_request_status(request_id: str, update_data: StatusUpdateReques
     cur = conn.cursor()
     
     try:
+        # Verify webhook API key
+        if x_api_key != WEBHOOK_API_KEY:
+            raise HTTPException(status_code=401, detail="Invalid API key")
+
         cur.execute("SELECT id, status, environment FROM requests WHERE id = %s", (request_id,))
         existing = cur.fetchone()
         if not existing:
@@ -387,7 +434,7 @@ async def update_request_status(request_id: str, update_data: StatusUpdateReques
         conn.commit()
         
         if update_data.status == "ready" and update_data.connection_string:
-            message = f"🚀 *Database is ready!*\nYour request `{request_id}` has been provisioned.\nConnection string: `{update_data.connection_string}`"
+            message = f"🚀 *Database is ready!*\nYour request `{request_id}` has been provisioned.\nView your secure credentials on the dashboard."
             background_tasks.add_task(send_slack_notification, message)
             
         return {"message": "Status updated successfully", "status": update_data.status}
@@ -401,6 +448,140 @@ async def update_request_status(request_id: str, update_data: StatusUpdateReques
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update status: {str(e)}"
         )
+    finally:
+        cur.close()
+        conn.close()
+
+# ---------------------------------------------------------------
+# Feature: Manual Approval / Denial
+# ---------------------------------------------------------------
+@app.post("/api/requests/{request_id}/approve")
+async def approve_request(request_id: str, background_tasks: BackgroundTasks):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT * FROM requests WHERE id = %s", (request_id,))
+        req = cur.fetchone()
+        if not req:
+            raise HTTPException(status_code=404, detail="Request not found")
+        if req["status"] != "pending_approval":
+            raise HTTPException(status_code=400, detail="Request is not pending approval")
+            
+        cur.execute("UPDATE requests SET status = 'provisioning' WHERE id = %s", (request_id,))
+        log_audit(conn, request_id, "approved", "admin", "Request manually approved")
+        conn.commit()
+        
+        background_tasks.add_task(
+            trigger_github_workflow, 
+            request_id, req["resource_type"], req["instance_size"], 
+            req["requester_email"], req["environment"], req["allowed_ip"]
+        )
+        
+        slack_msg = f"👍 *Approved*: Request `{request_id}` is now provisioning."
+        background_tasks.add_task(send_slack_notification, slack_msg)
+        
+        return {"message": "Request approved and provisioning started."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/api/requests/{request_id}/deny")
+async def deny_request(request_id: str, background_tasks: BackgroundTasks):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT * FROM requests WHERE id = %s", (request_id,))
+        req = cur.fetchone()
+        if not req:
+            raise HTTPException(status_code=404, detail="Request not found")
+        if req["status"] != "pending_approval":
+            raise HTTPException(status_code=400, detail="Request is not pending approval")
+            
+        cur.execute("UPDATE requests SET status = 'failed', failed_reason = 'Manually denied' WHERE id = %s", (request_id,))
+        log_audit(conn, request_id, "denied", "admin", "Request manually denied")
+        conn.commit()
+        
+        slack_msg = f"👎 *Denied*: Request `{request_id}` was denied."
+        background_tasks.add_task(send_slack_notification, slack_msg)
+        
+        return {"message": "Request denied."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+# ---------------------------------------------------------------
+# Feature: Manual Approval / Denial
+# ---------------------------------------------------------------
+@app.post("/api/requests/{request_id}/approve")
+async def approve_request(request_id: str, background_tasks: BackgroundTasks):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT * FROM requests WHERE id = %s", (request_id,))
+        req = cur.fetchone()
+        if not req:
+            raise HTTPException(status_code=404, detail="Request not found")
+        if req["status"] != "pending_approval":
+            raise HTTPException(status_code=400, detail="Request is not pending approval")
+            
+        cur.execute("UPDATE requests SET status = 'provisioning' WHERE id = %s", (request_id,))
+        log_audit(conn, request_id, "approved", "admin", "Request manually approved")
+        conn.commit()
+        
+        background_tasks.add_task(
+            trigger_github_workflow, 
+            request_id, req["resource_type"], req["instance_size"], 
+            req["requester_email"], req["environment"], req["allowed_ip"]
+        )
+        
+        slack_msg = f"👍 *Approved*: Request `{request_id}` is now provisioning."
+        background_tasks.add_task(send_slack_notification, slack_msg)
+        
+        return {"message": "Request approved and provisioning started."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/api/requests/{request_id}/deny")
+async def deny_request(request_id: str, background_tasks: BackgroundTasks):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT * FROM requests WHERE id = %s", (request_id,))
+        req = cur.fetchone()
+        if not req:
+            raise HTTPException(status_code=404, detail="Request not found")
+        if req["status"] != "pending_approval":
+            raise HTTPException(status_code=400, detail="Request is not pending approval")
+            
+        cur.execute("UPDATE requests SET status = 'failed', failed_reason = 'Manually denied' WHERE id = %s", (request_id,))
+        log_audit(conn, request_id, "denied", "admin", "Request manually denied")
+        conn.commit()
+        
+        slack_msg = f"👎 *Denied*: Request `{request_id}` was denied."
+        background_tasks.add_task(send_slack_notification, slack_msg)
+        
+        return {"message": "Request denied."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cur.close()
         conn.close()
@@ -518,6 +699,7 @@ async def get_team_members():
                 "email": row["requester_email"],
                 "resource_types": row["resource_types"],
                 "resource_count": row["resource_count"],
+                "resources": [dict(r) for r in user_resources],
                 "total_cost": total_cost,
             })
         
@@ -654,7 +836,7 @@ async def list_requests():
             SELECT 
                 id, requester_name, requester_email, resource_type,
                 environment, instance_size, status, created_at, 
-                expiry_date, connection_string 
+                expiry_date, connection_string, allowed_ip
             FROM requests 
             ORDER BY created_at DESC;
         """
@@ -673,7 +855,8 @@ async def list_requests():
                 "status": req["status"],
                 "created_at": req["created_at"].isoformat() if req["created_at"] else None,
                 "expiry_date": str(req["expiry_date"]) if req["expiry_date"] else None,
-                "connection_string": req["connection_string"]
+                "connection_string": mask_connection_string(req["connection_string"]),
+                "allowed_ip": req["allowed_ip"]
             })
             
         return {"requests": formatted_requests}
@@ -684,6 +867,112 @@ async def list_requests():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch requests: {str(e)}"
         )
+    finally:
+        cur.close()
+        conn.close()
+
+# ---------------------------------------------------------------
+# Feature: Owner-Only Connection String Reveal
+# ---------------------------------------------------------------
+@app.get("/api/requests/{request_id}/connection-string")
+async def reveal_connection_string(request_id: str, email: str = Query(...)):
+    """
+    Returns the full unmasked connection string only if the
+    requesting email matches the resource owner.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        cur.execute(
+            "SELECT connection_string, requester_email FROM requests WHERE id = %s",
+            (request_id,)
+        )
+        req = cur.fetchone()
+        
+        if not req:
+            raise HTTPException(status_code=404, detail="Request not found")
+        
+        if req["requester_email"] != email:
+            raise HTTPException(status_code=403, detail="You can only view your own connection strings")
+        
+        if not req["connection_string"]:
+            raise HTTPException(status_code=404, detail="No connection string available yet")
+        
+        return {"connection_string": req["connection_string"]}
+    finally:
+        cur.close()
+        conn.close()
+
+# ---------------------------------------------------------------
+# Feature: IP Update (Zero Cost Security)
+# ---------------------------------------------------------------
+class UpdateIpRequest(BaseModel):
+    new_allowed_ip: str
+    
+    @field_validator('new_allowed_ip')
+    @classmethod
+    def validate_ip(cls, v):
+        if not v:
+            raise ValueError('IP address is required')
+        return v.replace('/32', '').strip()
+
+@app.post("/api/requests/{request_id}/update-ip")
+async def update_request_ip(request_id: str, ip_data: UpdateIpRequest):
+    """
+    Updates the allowed IP for an active resource and triggers the SG update workflow.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, status, requester_email, resource_type, instance_size, environment FROM requests WHERE id = %s", (request_id,))
+        req = cur.fetchone()
+        if not req:
+            raise HTTPException(status_code=404, detail="Request not found")
+            
+        cur.execute("UPDATE requests SET allowed_ip = %s WHERE id = %s", (ip_data.new_allowed_ip, request_id))
+        
+        log_audit(conn, request_id, "ip_updated", req["requester_email"],
+                  f"Allowed IP updated to {ip_data.new_allowed_ip}",
+                  {"new_ip": ip_data.new_allowed_ip})
+        conn.commit()
+        
+        # Trigger GitHub workflow
+        token = os.getenv("GITHUB_TOKEN")
+        owner = os.getenv("GITHUB_OWNER")
+        repo = os.getenv("GITHUB_REPO")
+        
+        if all([token, owner, repo]):
+            url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/update-sg.yml/dispatches"
+            headers = {
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {token}",
+                "X-GitHub-Api-Version": "2022-11-28"
+            }
+            payload = {
+                "ref": "main",
+                "inputs": {
+                    "request_id": request_id,
+                    "new_allowed_ip": ip_data.new_allowed_ip,
+                    "resource_type": req["resource_type"],
+                    "instance_size": req["instance_size"],
+                    "email": req["requester_email"],
+                    "environment": req["environment"]
+                }
+            }
+            async with httpx.AsyncClient() as client:
+                try:
+                    response = await client.post(url, headers=headers, json=payload)
+                    response.raise_for_status()
+                except Exception as e:
+                    print(f"Failed to trigger SG update workflow: {e}")
+                    
+        return {"message": "IP updated and SG update triggered", "allowed_ip": ip_data.new_allowed_ip}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cur.close()
         conn.close()

@@ -1,0 +1,63 @@
+name: Update Security Group IP
+
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        required: true
+        type: string
+      new_allowed_ip:
+        required: true
+        type: string
+      resource_type:
+        required: true
+        type: string
+      instance_size:
+        required: true
+        type: string
+      email:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  update-sg:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ">= 1.0"
+          
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.GH_ACTIONS_ROLE_ARN }}
+          aws-region: us-east-1
+          
+      - name: Update SG Rule
+        working-directory: ./terraform
+        run: |
+          # Initialize terraform with the state file of the specific request
+          terraform init \
+            -backend-config="bucket=infractl-terraform-state" \
+            -backend-config="key=state/${{ github.event.inputs.request_id }}.tfstate" \
+            -backend-config="region=us-east-1" \
+            -backend-config="use_lockfile=true"
+            
+          # Run terraform apply with the new IP and original configuration values
+          terraform apply -auto-approve \
+            -var="request_id=${{ github.event.inputs.request_id }}" \
+            -var="resource_type=${{ github.event.inputs.resource_type }}" \
+            -var="instance_size=${{ github.event.inputs.instance_size }}" \
+            -var="requester_email=${{ github.event.inputs.email }}" \
+            -var="environment=${{ github.event.inputs.environment }}" \
+            -var="allowed_ip=${{ github.event.inputs.new_allowed_ip }}/32"

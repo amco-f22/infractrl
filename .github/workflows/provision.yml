@@ -23,6 +23,10 @@ on:
         description: 'Environment (dev, staging, prod)'
         required: true
         type: string
+      allowed_ip:
+        description: 'Allowed IP Address'
+        required: true
+        type: string
 
 # Required for OIDC token generation (keyless auth — no stored AWS keys)
 permissions:
@@ -84,7 +88,8 @@ jobs:
             -var="resource_type=${{ github.event.inputs.resource_type }}" \
             -var="instance_size=${{ github.event.inputs.instance_size }}" \
             -var="requester_email=${{ github.event.inputs.email }}" \
-            -var="environment=${{ github.event.inputs.environment }}"
+            -var="environment=${{ github.event.inputs.environment }}" \
+            -var="allowed_ip=${{ github.event.inputs.allowed_ip }}"
 
       - name: Setup Python
         uses: actions/setup-python@v5

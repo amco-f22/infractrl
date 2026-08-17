@@ -26,6 +26,7 @@ CREATE TABLE requests (
     resource_type VARCHAR(50) DEFAULT 'postgres', -- Type: postgres, redis, s3
     environment VARCHAR(50) NOT NULL,            -- Env: dev, staging, prod
     instance_size VARCHAR(50) NOT NULL,          -- Size: small, medium, large
+    allowed_ip VARCHAR(50),                      -- IP address for dynamic security group rules
     
     -- Lifecycle management
     status VARCHAR(50) DEFAULT 'pending',         -- pending, provisioning, ready, failed, deleted

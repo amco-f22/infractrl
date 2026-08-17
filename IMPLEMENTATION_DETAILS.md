@@ -308,3 +308,37 @@ The Terraform IAM policy was upgraded to a comprehensive configuration (v5) cove
 - The GitHub Actions workflow updates the database status via a Python script (`update_status.py`) sending requests to `PROD_API_URL` (passed via GitHub Secrets).
 - If the backend is running locally on `localhost:8000`, the GitHub Actions runner (in the cloud) **cannot** reach it, resulting in a failed status update and the `aws_resource_id` remaining null in the database.
 - **Fix**: The backend must be publicly deployed (e.g., to Render/AWS) or a tunneling tool like ngrok must be used to provide a public URL to the GitHub Actions runner.
+
+---
+
+## 🎨 August 2026 UX & Aesthetics Polish
+
+### 1. Editorial Typography Alignment
+- **YC Startup Typography**: Replaced default sans-serif gradients on specific elements with premium, modern editorial fonts (`Cormorant Garamond` / `PP Editorial New`).
+- **New CSS Tokens**: Added `.font-italic-accent` class in `globals.css` (font-weight: 500, italic) to inject "startup drama" and visual trust for contrast in hero headings (e.g., ", not 5 days").
+- **Font Stack**: Fully integrated `Plus Jakarta Sans` for clean UI body text and `JetBrains Mono` for tech/CLI metrics.
+
+### 2. Spotlight Cursor Refinement
+- **Removed Global Pollution**: Removed the persistent background spotlight cursor from `app/page.js` to reduce visual noise.
+- **Component-Level Isolation**: Refactored `SpotlightCard.js` to strictly activate the spotlight gradient *only on mouse hover* over the specific card, creating a much cleaner, premium interaction.
+
+### 3. Tech Stack Clarification (Vercel & Railway)
+- **Deployment Branding**: Explicitly replaced generic/AWS hosting logos for the application itself with **Vercel** (Frontend) and **Railway** (Backend) in the `TechStack.js` component to accurately reflect the actual intended deployment architecture. (AWS is still used for the *provisioned* infrastructure, but not the portal itself).
+
+### 4. Marketing Mockup Updates
+- **Isolated Landing Page Data**: Modified `DashboardSection.js` on the landing page to act as a static, robust marketing mockup. It no longer attempts to hit the `/api/requests` endpoint (which would incorrectly show real user data or fail). 
+- **Rich Variations**: Added 5 distinct mock resources (PostgreSQL, Redis, S3) showcasing various AWS regions (`us-east-1`, `eu-west-1`, `us-west-2`), statuses (provisioning, ready, expiring), and calculated prices to give the landing page a full, realistic telemetry preview.
+
+### 5. Code Quality & Linter Cleanups
+- Fixed unused font imports (`Inter`) in `layout.js` and a stale `Spotlight` import in `dashboard/page.js`.
+- Resolved a false-positive ESLint `react-hooks/set-state-in-effect` and `exhaustive-deps` warning pattern on the live telemetry dashboards, ensuring clean Next.js production builds.
+
+---
+
+## 🔑 Identity & Authentication (NextAuth v5)
+**Goal**: Secure the portal and uniquely identify requesters without requiring manual form entry for names/emails.
+
+- **GitHub OAuth Integration**: Configured `next-auth` (v5 Beta) using the GitHub provider (`frontend/auth.js`), relying on `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
+- **Protected Actions**: Users must be signed in via GitHub to trigger Terraform provisioning or view sensitive credentials in the dashboard.
+- **Session Context Pipeline**: The application extracts the authenticated user's `email`, `name`, and `image` from the NextAuth session to populate the `requester_email` and `requester_name` fields automatically in the FastAPI backend payload.
+- **Auth UI (`AuthButton.js`)**: A custom sign-in component that renders the user's GitHub avatar (using standard `<img>` with disabled linting to support external blob URLs) and email when authenticated, providing a seamless 1-click logout experience.
