@@ -67,7 +67,7 @@ export default function PolicyAdmin() {
     if (!session?.user?.email) return;
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/admin/policies', {
+      const res = await fetch('/api/backend/admin/policies', {
         headers: { 'x-user-email': session.user.email }
       });
       if (res.ok) {
@@ -147,7 +147,7 @@ export default function PolicyAdmin() {
         }]
       };
       
-      const res = await fetch('http://localhost:8000/api/admin/policies', {
+      const res = await fetch('/api/backend/admin/policies', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -182,7 +182,7 @@ export default function PolicyAdmin() {
   const deletePolicy = async (id, policyName) => {
     if (!confirm(`Are you sure you want to revoke policy "${policyName}"?`)) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/policies/${id}`, { 
+      const res = await fetch(`/api/backend/admin/policies/${id}`, { 
         method: 'DELETE',
         headers: { 'x-user-email': session?.user?.email || '' }
       });

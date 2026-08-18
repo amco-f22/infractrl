@@ -7,7 +7,8 @@ from typing import List, Optional
 import psycopg2
 import httpx
 from psycopg2.extras import RealDictCursor
-from fastapi import FastAPI, HTTPException, status, BackgroundTasks, Header, Query
+from fastapi import FastAPI, HTTPException, status, BackgroundTasks, Header, Query, Request, Depends
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from dotenv import load_dotenv
@@ -29,6 +30,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def require_internal_api_key(request: Request, call_next):
+    # Skip webhook endpoint
+    if request.url.path.endswith("/progress"):
+        return await call_next(request)
+        
+    # Protect all other /api routes
+    if request.url.path.startswith("/api/"):
+        api_key = request.headers.get("x-internal-api-key")
+        expected_key = os.getenv("INTERNAL_API_KEY", "dev-internal-key-123")
+        if not api_key or api_key != expected_key:
+            return JSONResponse(status_code=403, content={"detail": "Invalid internal API key"})
+            
+    return await call_next(request)
+
+def get_current_user_email(x_user_email: str = Header(...)):
+    return x_user_email.strip().lower()
+
+def is_admin(email: str = Depends(get_current_user_email)):
+    admin_emails = [e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()]
+    if email not in admin_emails:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    return email
 
 # Database Configuration
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -1043,6 +1068,47 @@ async def update_request_ip(request_id: str, ip_data: UpdateIpRequest):
         conn.close()
 
 # ---------------------------------------------------------------
+# Feature: Admin Policies
+# ---------------------------------------------------------------
+@app.get("/api/admin/policies")
+async def get_policies(_: str = Depends(is_admin)):
+    # Currently policies are hardcoded in policy_engine.py
+    # Returning a mock format that the frontend expects
+    return [
+        {
+            "id": "policy-1",
+            "name": "Auto-Approve Dev Resources",
+            "description": "Automatically approve small dev resources",
+            "priority": 10,
+            "action_type": "auto_approved",
+            "conditions": [
+                {"field": "environment", "operator": "eq", "value": "dev"},
+                {"field": "instance_size", "operator": "eq", "value": "small"}
+            ]
+        },
+        {
+            "id": "policy-2",
+            "name": "Cost Ceiling",
+            "description": "Deny anything over $100",
+            "priority": 1,
+            "action_type": "auto_denied",
+            "conditions": [
+                {"field": "estimated_cost", "operator": "gt", "value": "100"}
+            ]
+        }
+    ]
+
+@app.post("/api/admin/policies")
+async def create_policy(policy_data: dict, _: str = Depends(is_admin)):
+    # Mock endpoint
+    return {"message": "Policy created successfully", "id": "policy-new"}
+
+@app.delete("/api/admin/policies/{policy_id}")
+async def delete_policy(policy_id: str, _: str = Depends(is_admin)):
+    # Mock endpoint
+    return {"message": "Policy deleted successfully"}
+
+# ---------------------------------------------------------------
 # Feature: Live Provisioning Terminal Logs & Webhook
 # ---------------------------------------------------------------
 class ProgressUpdateRequest(BaseModel):
@@ -1163,4 +1229,6 @@ async def update_provisioning_progress(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

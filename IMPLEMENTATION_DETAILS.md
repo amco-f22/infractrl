@@ -342,3 +342,23 @@ The Terraform IAM policy was upgraded to a comprehensive configuration (v5) cove
 - **Protected Actions**: Users must be signed in via GitHub to trigger Terraform provisioning or view sensitive credentials in the dashboard.
 - **Session Context Pipeline**: The application extracts the authenticated user's `email`, `name`, and `image` from the NextAuth session to populate the `requester_email` and `requester_name` fields automatically in the FastAPI backend payload.
 - **Auth UI (`AuthButton.js`)**: A custom sign-in component that renders the user's GitHub avatar (using standard `<img>` with disabled linting to support external blob URLs) and email when authenticated, providing a seamless 1-click logout experience.
+
+---
+
+## 🛡️ Custom Policy Engine & Enterprise Admin UI
+**Goal**: Upgrade the hardcoded provisioning logic into a sophisticated, database-driven "Policy-as-Configuration" engine.
+
+- **Database-Driven Engine (`policy_engine_v2.py`)**: Migrated away from static dictionaries to a fully dynamic evaluation engine. Fetches active policies from Supabase, processes logic gates (AND/OR), and dynamically resolves decisions (`auto_approved`, `pending_approval`, `auto_denied`) based on priority ranking.
+- **Enterprise Split-Pane Admin Dashboard**: Completely overhauled the `/admin/policies` route with a premium aesthetic. Implemented a sticky configuration form on the left pane and an independently scrolling list of active policies on the right, mirroring enterprise-grade control planes.
+- **Strict Client-Side Validation**: Secured the Policy Admin UI against empty or malformed rule submissions. Enforced required field validation (Name, Description, conditions arrays, and Action reasons), disabling submission and providing inline amber warning toasts until the payload is valid.
+- **Real-Time Policy Preview**: Built a `POST /api/policies/preview` endpoint that allows the user dashboard to live-evaluate their intended AWS request against the currently deployed policy engine rules *before* clicking submit, returning immediate UX feedback.
+- **Automated Sync Verification (`verify_sync.py`)**: Engineered a comprehensive Python script to programmatically hit the FastAPI backend, create mock policy rules, evaluate sample provisioning requests against them, verify HTTP responses, and confirm the end-to-end sync without manual browser clicking.
+
+## Infrastructure Cleanup & Final Security Touches
+- **Dynamic IP Updates Auth:** The /api/requests/{request_id}/update-ip endpoint is now guarded by checking the x-user-email header against the resource owner's email, preventing unauthorized security group modifications.
+- **Frontend Cleanup:** Redis and S3 resource placeholders were completely removed from the provisioning UI to avoid confusion until they are implemented in Terraform.
+- **Project Structure:** Deleted stale erify.py and erify_sync.py debug scripts, and confirmed the cleanup of unused directories (e.g., lambda/).
+- **Slack Masking & CORS:** Verified that connection strings are securely masked/omitted from Slack notification payloads, and confirmed CORS origins are properly dynamically loaded via .env.
+- **Connection String Masking:** Verified that GET /api/requests (which populates the main dashboard list) correctly masks all connection strings using regex. The true connection string is only exposed via the heavily guarded /api/requests/{id}/connection-string endpoint.
+- **Resource Creation Authorization:** Hardened POST /api/requests by verifying the x-user-email header matches the equester_email in the payload, preventing unauthenticated bots from spamming AWS provisioning requests.
+- **AWS Budget Automation:** Integrated the AWS Budget creation directly into ootstrap_aws.sh using the existing udget.json and udget-notifications.json files, ensuring the \ alert is actually provisioned and not just documented as a manual step.

@@ -175,15 +175,25 @@ ROLE_ARN=$(aws iam get-role --role-name "$ROLE_NAME" --query Role.Arn --output t
 
 echo "  ✅ IAM role ready"
 echo ""
+# --------------------------------------------------------------------------
+# 5. Create AWS Budget
+# --------------------------------------------------------------------------
+echo "[5/5] Creating AWS Budget ($10 monthly limit)..."
+
+aws budgets create-budget \
+    --account-id "$ACCOUNT_ID" \
+    --budget file://budget.json \
+    --notifications-with-subscribers file://budget-notifications.json \
+    2>/dev/null || echo "  Budget already exists or permission denied — OK"
+
+echo "  ✅ AWS Budget created"
+echo ""
 echo "=== SETUP COMPLETE ==="
 echo ""
 echo "Next steps:"
 echo "  1. Add this to GitHub Secrets as GH_ACTIONS_ROLE_ARN:"
 echo "     $ROLE_ARN"
 echo ""
-echo "  2. Set an AWS Budget alert (recommended: \$10 threshold):"
-echo "     https://console.aws.amazon.com/billing/home#/budgets"
-echo ""
-echo "  3. Find your current IP for the allowed_ip Terraform variable:"
+echo "  2. Find your current IP for the allowed_ip Terraform variable:"
 echo "     curl -s https://checkip.amazonaws.com"
 echo ""

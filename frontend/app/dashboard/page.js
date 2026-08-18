@@ -132,7 +132,7 @@ function ConnectionCell({ req, session }) {
   const [fullString, setFullString] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const API_URL = "/api/backend";
   const isOwner = session?.user?.email && session.user.email === req.requester_email;
 
   const handleUpdateIp = async () => {
@@ -346,7 +346,7 @@ export default function DashboardPage() {
       const fetchPreview = async () => {
         try {
           setPolicyPreview(null); // Reset to show loading state on change
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+          const API_URL = "/api/backend";
           const cost = PRICING[provForm.resource_type]?.[provForm.instance_size] || 0;
           const res = await fetch(`${API_URL}/api/policies/preview`, {
             method: "POST",
@@ -388,7 +388,7 @@ export default function DashboardPage() {
     }
   };
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const API_URL = "/api/backend";
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);

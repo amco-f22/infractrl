@@ -56,7 +56,7 @@ export default function OnboardingPage() {
   const [targetName, setTargetName] = useState("");
   const [targetEmail, setTargetEmail] = useState("");
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const API_URL = "/api/backend";
 
   useEffect(() => {
     fetch(`${API_URL}/api/team/members-with-resources`)
