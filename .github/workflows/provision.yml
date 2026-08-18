@@ -33,6 +33,11 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  BACKEND_URL: ${{ secrets.BACKEND_URL }}
+  WEBHOOK_API_KEY: ${{ secrets.WEBHOOK_API_KEY }}
+  REQUEST_ID: ${{ github.event.inputs.request_id }}
+
 jobs:
   provision:
     name: Terraform Apply
@@ -43,8 +48,31 @@ jobs:
       cancel-in-progress: false # Don't cancel a running provision
 
     steps:
+      # ------------------------------------------------------------------
+      # Helper: report progress to backend (skips gracefully if no BACKEND_URL)
+      # ------------------------------------------------------------------
+      - name: Report — Workflow Start
+        if: always()
+        run: |
+          [ -z "$BACKEND_URL" ] && echo "BACKEND_URL not set, skipping callback" && exit 0
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -sf -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: ${WEBHOOK_API_KEY}" \
+            -d "{\"step\":\"workflow_start\",\"status\":\"running\",\"message\":\"🚀 GitHub Actions workflow started\",\"details\":{\"run_id\":\"${{ github.run_id }}\",\"run_url\":\"${RUN_URL}\"}}" \
+            || echo "Backend callback failed (non-fatal)"
+
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Report — Code Checked Out
+        run: |
+          [ -z "$BACKEND_URL" ] && exit 0
+          curl -sf -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: ${WEBHOOK_API_KEY}" \
+            -d '{"step":"checkout","status":"success","message":"✅ Repository checked out"}' \
+            || echo "Backend callback failed (non-fatal)"
 
       # ===========================================================================
       # OIDC Authentication: No long-lived AWS access keys stored in GitHub Secrets.
@@ -67,10 +95,28 @@ jobs:
           role-to-assume: ${{ secrets.GH_ACTIONS_ROLE_ARN }}
           aws-region: us-east-1
 
+      - name: Report — AWS Credentials Obtained
+        run: |
+          [ -z "$BACKEND_URL" ] && exit 0
+          curl -sf -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: ${WEBHOOK_API_KEY}" \
+            -d '{"step":"aws_auth","status":"success","message":"✅ AWS credentials obtained via OIDC (no static keys)"}' \
+            || echo "Backend callback failed (non-fatal)"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ">= 1.0"
+
+      - name: Report — Terraform Ready
+        run: |
+          [ -z "$BACKEND_URL" ] && exit 0
+          curl -sf -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: ${WEBHOOK_API_KEY}" \
+            -d '{"step":"terraform_setup","status":"success","message":"✅ Terraform CLI installed"}' \
+            || echo "Backend callback failed (non-fatal)"
 
       - name: Terraform Init (with per-request remote state)
         working-directory: ./terraform
@@ -79,6 +125,24 @@ jobs:
         run: |
           terraform init \
             -backend-config="key=state/${{ github.event.inputs.request_id }}.tfstate"
+
+      - name: Report — Terraform Initialized
+        run: |
+          [ -z "$BACKEND_URL" ] && exit 0
+          curl -sf -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: ${WEBHOOK_API_KEY}" \
+            -d '{"step":"terraform_init","status":"success","message":"✅ Terraform state backend initialized (isolated S3 state per request)"}' \
+            || echo "Backend callback failed (non-fatal)"
+
+      - name: Report — Terraform Plan Starting
+        run: |
+          [ -z "$BACKEND_URL" ] && exit 0
+          curl -sf -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: ${WEBHOOK_API_KEY}" \
+            -d '{"step":"terraform_plan","status":"running","message":"📋 Computing Terraform plan..."}' \
+            || echo "Backend callback failed (non-fatal)"
 
       - name: Terraform Apply
         working-directory: ./terraform
@@ -91,6 +155,21 @@ jobs:
             -var="environment=${{ github.event.inputs.environment }}" \
             -var="allowed_ip=${{ github.event.inputs.allowed_ip }}"
 
+      - name: Report — Infrastructure Created
+        working-directory: ./terraform
+        run: |
+          [ -z "$BACKEND_URL" ] && exit 0
+          # Capture Terraform outputs if available, fall back gracefully
+          ENDPOINT=$(terraform output -raw rds_endpoint 2>/dev/null || echo "")
+          RESOURCE_ID=$(terraform output -raw aws_resource_id 2>/dev/null || echo "")
+          DETAILS="{}"
+          [ -n "$ENDPOINT" ] && DETAILS="{\"endpoint\":\"${ENDPOINT}\",\"aws_resource_id\":\"${RESOURCE_ID}\"}"
+          curl -sf -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: ${WEBHOOK_API_KEY}" \
+            -d "{\"step\":\"terraform_apply\",\"status\":\"success\",\"message\":\"🏗️ AWS resources created\",\"details\":${DETAILS}}" \
+            || echo "Backend callback failed (non-fatal)"
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -99,7 +178,6 @@ jobs:
       - name: Get Terraform Outputs and Update Status
         working-directory: ./terraform
         env:
-          REQUEST_ID: ${{ github.event.inputs.request_id }}
           API_URL: ${{ secrets.PROD_API_URL }}
         run: |
           export TF_OUT_CONNECTION_STRING=$(terraform output -raw connection_string)
@@ -107,11 +185,30 @@ jobs:
           cd ../
           python .github/scripts/update_status.py
 
+      - name: Report — Complete (Success)
+        if: success()
+        run: |
+          [ -z "$BACKEND_URL" ] && exit 0
+          curl -sf -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: ${WEBHOOK_API_KEY}" \
+            -d '{"step":"complete","status":"success","message":"🎉 Provisioning complete! Your resource is ready."}' \
+            || echo "Backend callback failed (non-fatal)"
+
       # On failure, update the request status to 'failed' so the dashboard reflects it
       - name: Update Status to Failed (on error)
         if: failure()
         env:
-          REQUEST_ID: ${{ github.event.inputs.request_id }}
           API_URL: ${{ secrets.PROD_API_URL }}
           FAILED: "true"
         run: python .github/scripts/update_status.py
+
+      - name: Report — Complete (Failure)
+        if: failure()
+        run: |
+          [ -z "$BACKEND_URL" ] && exit 0
+          curl -sf -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: ${WEBHOOK_API_KEY}" \
+            -d '{"step":"complete","status":"failed","message":"❌ Provisioning failed. Check GitHub Actions logs for details."}' \
+            || echo "Backend callback failed (non-fatal)"

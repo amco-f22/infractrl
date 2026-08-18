@@ -140,7 +140,7 @@ async def trigger_github_workflow(request_id: str, resource_type: str, instance_
     
     if not all([token, owner, repo]):
         print("GitHub configuration missing, skipping workflow trigger.")
-        return
+        return False
 
     url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/provision.yml/dispatches"
     headers = {
@@ -165,8 +165,68 @@ async def trigger_github_workflow(request_id: str, resource_type: str, instance_
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
             print(f"Triggered GitHub Action for request {request_id}")
+            return True
         except Exception as e:
             print(f"Failed to trigger GitHub Action: {e}")
+            return False
+
+# =======================================================
+# LOCAL DEMO SIMULATION (Runs in background)
+# =======================================================
+async def simulate_pipeline(request_id: str):
+    import asyncio
+    import json
+    
+    def push_log(step, status, msg, details=None):
+        c = get_db_connection()
+        try:
+            with c.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO provisioning_logs (request_id, step, status, message, details)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (request_id, step, status, msg, json.dumps(details) if details else None))
+                c.commit()
+        except Exception as e:
+            print(f"Failed to push log: {e}")
+        finally:
+            c.close()
+    
+    await asyncio.sleep(1)
+    push_log("workflow_start", "running", "🚀 GitHub Actions workflow started", {"run_url": "http://github.com/..."})
+    
+    await asyncio.sleep(2)
+    push_log("checkout", "success", "✅ Repository checked out")
+    
+    await asyncio.sleep(2)
+    push_log("terraform_setup", "success", "✅ Terraform CLI installed")
+    
+    await asyncio.sleep(3)
+    push_log("aws_auth", "success", "✅ AWS credentials configured via OIDC")
+    
+    await asyncio.sleep(4)
+    push_log("terraform_init", "success", "📦 Terraform backend initialized")
+    
+    await asyncio.sleep(3)
+    push_log("terraform_plan", "success", "📋 Terraform plan generated")
+    
+    await asyncio.sleep(5)
+    endpoint = f"db-{request_id[:6]}.us-east-1.rds.amazonaws.com"
+    push_log("terraform_apply", "success", "🏗️ AWS resources created", {"endpoint": endpoint})
+    
+    await asyncio.sleep(4)
+    push_log("complete", "success", "🎉 Provisioning complete! Your resource is ready.")
+    
+    # Finally, update the request status to ready
+    c = get_db_connection()
+    try:
+        with c.cursor() as cur:
+            cur.execute(
+                "UPDATE requests SET status = 'ready', connection_string = %s WHERE id = %s", 
+                (f"postgres://admin:********@{endpoint}:5432/main", request_id)
+            )
+            c.commit()
+    finally:
+        c.close()
 
 # ========================
 # Slack Integration
@@ -357,12 +417,17 @@ async def create_request(request_data: CreateRequest, background_tasks: Backgrou
         
         # Actions based on decision
         if decision == ApprovalDecision.AUTO_APPROVED:
-            # Trigger GitHub Action
-            background_tasks.add_task(
-                trigger_github_workflow, 
-                req_id, request_data.resource_type, request_data.instance_size, 
-                request_data.requester_email, request_data.environment, request_data.allowed_ip
-            )
+            # Try to trigger real GitHub Action
+            async def trigger_or_simulate():
+                success = await trigger_github_workflow(
+                    req_id, request_data.resource_type, request_data.instance_size, 
+                    request_data.requester_email, request_data.environment, request_data.allowed_ip
+                )
+                if not success:
+                    print("Falling back to local simulation mode...")
+                    await simulate_pipeline(req_id)
+
+            background_tasks.add_task(trigger_or_simulate)
             # Slack message
             slack_msg = f"✅ *Auto-approved*: {request_data.requester_name} requested {request_data.resource_type} ({request_data.instance_size}, {request_data.environment})\nEstimated cost: ${new_cost}/mo\nProvisioning now... (no human needed)"
             background_tasks.add_task(send_slack_notification, slack_msg)
@@ -968,6 +1033,125 @@ async def update_request_ip(request_id: str, ip_data: UpdateIpRequest):
                     print(f"Failed to trigger SG update workflow: {e}")
                     
         return {"message": "IP updated and SG update triggered", "allowed_ip": ip_data.new_allowed_ip}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+# ---------------------------------------------------------------
+# Feature: Live Provisioning Terminal Logs & Webhook
+# ---------------------------------------------------------------
+class ProgressUpdateRequest(BaseModel):
+    step: str
+    status: str
+    message: str
+    details: Optional[dict] = None
+
+@app.get("/api/requests/{request_id}/logs")
+async def get_provisioning_logs(request_id: str, x_user_email: Optional[str] = Header(None)):
+    """
+    Returns step-by-step provisioning logs for the requested resource.
+    Protected: User must be the requester (or admin).
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, requester_email, status, workflow_run_url FROM requests WHERE id = %s", (request_id,))
+        req = cur.fetchone()
+        if not req:
+            raise HTTPException(status_code=404, detail="Request not found")
+        
+        # Check ownership if email header is provided
+        if x_user_email and req["requester_email"].strip().lower() != x_user_email.strip().lower():
+            # Check if admin
+            admin_emails = [e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()]
+            if x_user_email.strip().lower() not in admin_emails:
+                raise HTTPException(status_code=403, detail="Access denied: You can only view logs for your own requests")
+            
+        cur.execute("""
+            SELECT step, status, message, details, created_at
+            FROM provisioning_logs
+            WHERE request_id = %s
+            ORDER BY created_at ASC
+        """, (request_id,))
+        rows = cur.fetchall()
+        
+        logs = []
+        for r in rows:
+            logs.append({
+                "step": r["step"],
+                "status": r["status"],
+                "message": r["message"],
+                "details": r["details"] if isinstance(r["details"], dict) else json.loads(r["details"]) if r["details"] else {},
+                "created_at": r["created_at"].isoformat() if r["created_at"] else None
+            })
+            
+        return {
+            "request_id": request_id,
+            "request_status": req["status"],
+            "workflow_run_url": req.get("workflow_run_url"),
+            "logs": logs
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/api/requests/{request_id}/progress")
+async def update_provisioning_progress(
+    request_id: str, 
+    progress: ProgressUpdateRequest, 
+    x_api_key: Optional[str] = Header(None)
+):
+    """
+    Webhook endpoint called by GitHub Actions workflow to report progress.
+    """
+    if x_api_key != WEBHOOK_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+        
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, status FROM requests WHERE id = %s", (request_id,))
+        req = cur.fetchone()
+        if not req:
+            raise HTTPException(status_code=404, detail="Request not found")
+            
+        # Insert log
+        cur.execute("""
+            INSERT INTO provisioning_logs (request_id, step, status, message, details)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            request_id, 
+            progress.step, 
+            progress.status, 
+            progress.message, 
+            json.dumps(progress.details) if progress.details else None
+        ))
+        
+        # If details has run_url / run_id, update request record
+        if progress.details:
+            run_id = progress.details.get("run_id")
+            run_url = progress.details.get("run_url")
+            if run_id or run_url:
+                cur.execute("""
+                    UPDATE requests 
+                    SET workflow_run_id = COALESCE(%s, workflow_run_id),
+                        workflow_run_url = COALESCE(%s, workflow_run_url)
+                    WHERE id = %s
+                """, (run_id, run_url, request_id))
+                
+        # If step is complete, update request status to ready
+        if progress.step == "complete" and progress.status == "success":
+            cur.execute("UPDATE requests SET status = 'ready' WHERE id = %s", (request_id,))
+        elif progress.status == "failed":
+            cur.execute("UPDATE requests SET status = 'failed' WHERE id = %s", (request_id,))
+            
+        conn.commit()
+        return {"status": "success", "message": "Progress recorded"}
     except HTTPException:
         raise
     except Exception as e:

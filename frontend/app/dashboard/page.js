@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { SpotlightCard } from "@/components/ui/SpotlightCard";
+import ProvisioningTerminal from "@/components/ProvisioningTerminal";
 
 const HOURS_PER_MONTH = 730;
 
@@ -144,7 +145,10 @@ function ConnectionCell({ req, session }) {
       
       const res = await fetch(`${API_URL}/api/requests/${req.id}/update-ip`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-email": session?.user?.email || ""
+        },
         body: JSON.stringify({ new_allowed_ip: currentIp }),
       });
       if (res.ok) {
@@ -170,7 +174,9 @@ function ConnectionCell({ req, session }) {
     setLoading(true);
     try {
       const res = await fetch(
-        `${API_URL}/api/requests/${req.id}/connection-string?email=${encodeURIComponent(session.user.email)}`
+        `${API_URL}/api/requests/${req.id}/connection-string`, {
+          headers: { 'x-user-email': session?.user?.email || '' }
+        }
       );
       if (res.ok) {
         const data = await res.json();
@@ -191,7 +197,10 @@ function ConnectionCell({ req, session }) {
     setLoading(true);
     const toastId = toast.loading("Approving request...");
     try {
-      const res = await fetch(`${API_URL}/api/requests/${req.id}/approve`, { method: "POST" });
+      const res = await fetch(`${API_URL}/api/requests/${req.id}/approve`, { 
+        method: "POST",
+        headers: { 'x-user-email': session?.user?.email || '' }
+      });
       if (res.ok) {
         toast.success("Request approved and provisioning started!", { id: toastId });
         setTimeout(() => window.location.reload(), 1000);
@@ -210,7 +219,10 @@ function ConnectionCell({ req, session }) {
     setLoading(true);
     const toastId = toast.loading("Denying request...");
     try {
-      const res = await fetch(`${API_URL}/api/requests/${req.id}/deny`, { method: "POST" });
+      const res = await fetch(`${API_URL}/api/requests/${req.id}/deny`, { 
+        method: "POST",
+        headers: { 'x-user-email': session?.user?.email || '' }
+      });
       if (res.ok) {
         toast.success("Request denied.", { id: toastId });
         setTimeout(() => window.location.reload(), 1000);
@@ -324,6 +336,42 @@ export default function DashboardPage() {
   const [provLoading, setProvLoading] = useState(false);
   const [provStep, setProvStep] = useState("form"); // "form" or "terminal"
   const [terminalLogs, setTerminalLogs] = useState([]);
+  // Track the most recently provisioned request IDs to show the live terminal
+  const [activeTerminalIds, setActiveTerminalIds] = useState(new Set());
+  
+  const [policyPreview, setPolicyPreview] = useState(null);
+  
+  useEffect(() => {
+    if (session?.user?.email) {
+      const fetchPreview = async () => {
+        try {
+          setPolicyPreview(null); // Reset to show loading state on change
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+          const cost = PRICING[provForm.resource_type]?.[provForm.instance_size] || 0;
+          const res = await fetch(`${API_URL}/api/policies/preview`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              environment: provForm.environment,
+              size: provForm.instance_size,
+              resource_type: provForm.resource_type,
+              estimated_cost: cost,
+              requester_email: session.user.email
+            })
+          });
+          if (res.ok) {
+            setPolicyPreview(await res.json());
+          } else {
+            setPolicyPreview({ decision: "auto_approved", reason: "Fallback (Engine error)" });
+          }
+        } catch (e) {
+          console.error("Preview failed", e);
+          setPolicyPreview({ decision: "auto_approved", reason: "Fallback (Engine unreachable)" });
+        }
+      };
+      fetchPreview();
+    }
+  }, [provForm, session?.user?.email]);
   
   const addLog = (msg) => {
     setTerminalLogs((prev) => [...prev, { time: new Date().toISOString(), text: msg }]);
@@ -396,13 +444,9 @@ export default function DashboardPage() {
       return;
     }
     
-    // Evaluate policy locally to determine log path
-    const cost = PRICING[provForm.resource_type]?.[provForm.instance_size] || 0;
-    let expectedStatus = "auto_approved";
-    if (cost > 100) expectedStatus = "auto_denied";
-    else if (!(provForm.environment === "dev" && provForm.instance_size === "small" && provForm.resource_type === "postgres" && cost <= 15)) {
-      expectedStatus = "pending_approval";
-    }
+    // Use the live policy engine evaluation from the backend (preview endpoint)
+    const expectedStatus = policyPreview?.decision || "auto_approved";
+    const policyReason = policyPreview?.reason || "No strict policy matched";
 
     setProvStep("terminal");
     setTerminalLogs([]);
@@ -413,35 +457,10 @@ export default function DashboardPage() {
     addLog(`[SYSTEM] Initiating Provisioning Request by ${session.user.email}...`);
     await sleep(600);
     
-    let apiSuccess = false;
-    let apiData = null;
-    let apiError = null;
-    
-    const payload = {
-      ...provForm,
-      requester_name: session.user.name || "Developer",
-      requester_email: session.user.email,
-      allowed_ip: provForm.allowed_ip || "0.0.0.0",
-    };
-    
-    // Fire the API call but don't block the terminal simulation
-    fetch(`${API_URL}/api/requests`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }).then(async (res) => {
-      apiData = await res.json();
-      if (res.ok) apiSuccess = true;
-      else apiError = apiData.detail || "Unknown error";
-    }).catch(e => {
-      apiError = "Network error connecting to backend";
-    });
-
-    addLog(`[POLICY] Evaluating budget constraints for ${provForm.environment} (${provForm.instance_size})...`);
-    await sleep(800);
-    
     if (expectedStatus === "auto_denied") {
-      addLog(`[POLICY] ❌ REJECTED: Request exceeds $100/mo hard limit.`);
+      addLog(`[POLICY] Evaluating budget constraints for ${provForm.environment} (${provForm.instance_size})...`);
+      await sleep(800);
+      addLog(`[POLICY] ❌ REJECTED: ${policyReason}`);
       await sleep(400);
       addLog(`[SYSTEM] Aborting workflow.`);
       setProvLoading(false);
@@ -449,37 +468,74 @@ export default function DashboardPage() {
     }
 
     if (expectedStatus === "pending_approval") {
-      addLog(`[POLICY] ⚠️ FLAG: Exceeds auto-approve thresholds.`);
+      addLog(`[POLICY] Evaluating budget constraints for ${provForm.environment} (${provForm.instance_size})...`);
+      await sleep(800);
+      addLog(`[POLICY] ⚠️ FLAG: ${policyReason}`);
       await sleep(600);
       addLog(`[SYSTEM] Routing request to DevOps team for manual review.`);
       await sleep(1000);
       addLog(`[SYSTEM] Workflow paused. Awaiting manual approval...`);
       setProvLoading(false);
-      fetchRequests();
+      
+      // Fire the API call silently to store it
+      const payload = {
+        ...provForm,
+        requester_name: session.user.name || "Developer",
+        requester_email: session.user.email,
+        allowed_ip: provForm.allowed_ip || "0.0.0.0",
+      };
+      fetch(`${API_URL}/api/requests`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-email": session?.user?.email || ""
+        },
+        body: JSON.stringify(payload),
+      }).then(() => fetchRequests());
       return;
     }
 
     // Auto-approve flow
+    addLog(`[POLICY] Evaluating budget constraints for ${provForm.environment} (${provForm.instance_size})...`);
+    await sleep(800);
     addLog(`[POLICY] ✅ APPROVED: Request fits within auto-approval boundaries.`);
     await sleep(700);
-    addLog(`[AUTH] Authenticating to AWS via OIDC... OK`);
-    await sleep(900);
-    addLog(`[TERRAFORM] Initializing remote state...`);
-    await sleep(1200);
-    addLog(`[TERRAFORM] Plan: 3 to add, 0 to change, 0 to destroy.`);
-    await sleep(800);
-    addLog(`[AWS] Dispatching creation of RDS Instance (${provForm.instance_size})...`);
-    await sleep(1800);
-    addLog(`[AWS] Applying Zero-Trust Security Group rules for IP: ${provForm.allowed_ip || '0.0.0.0'}`);
-    await sleep(1400);
-    
-    if (apiError) {
-      addLog(`[ERROR] Backend failed: ${apiError}`);
-    } else {
-      addLog(`[SYSTEM] Infrastructure provisioning task successfully dispatched!`);
-      fetchRequests();
+    addLog(`[SYSTEM] Dispatching workflow...`);
+
+    const payload = {
+      ...provForm,
+      requester_name: session.user.name || "Developer",
+      requester_email: session.user.email,
+      allowed_ip: provForm.allowed_ip || "0.0.0.0",
+    };
+
+    try {
+      const res = await fetch(`${API_URL}/api/requests`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-email": session?.user?.email || ""
+        },
+        body: JSON.stringify(payload),
+      });
+      const apiData = await res.json();
+      
+      if (res.ok) {
+        if (apiData?.id) {
+          // Store the generated request ID to pass to ProvisioningTerminal
+          setProvForm(p => ({ ...p, _requestId: apiData.id }));
+          setActiveTerminalIds((prev) => new Set([...prev, apiData.id]));
+        }
+        setProvStep("terminal"); // Switch modal to show ProvisioningTerminal
+        fetchRequests();
+      } else {
+        toast.error(`Backend failed: ${apiData.detail || "Unknown error"}`);
+      }
+    } catch (e) {
+      toast.error("Network error connecting to backend");
+    } finally {
+      setProvLoading(false);
     }
-    setProvLoading(false);
   };
 
   useEffect(() => {
@@ -608,6 +664,14 @@ export default function DashboardPage() {
             >
               <Users size={14} />
               <span>Clone Stack</span>
+            </Link>
+
+            <Link
+              href="/admin/policies"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-xs font-medium text-indigo-300 hover:text-white hover:bg-indigo-500/20 transition-colors"
+            >
+              <Shield size={14} />
+              <span>Policy Admin</span>
             </Link>
 
             <motion.button
@@ -845,6 +909,26 @@ export default function DashboardPage() {
                     </div>
                   );
                 })}
+
+                {/* Live Provisioning Terminals — shown below each provisioning row */}
+                {filteredRequests
+                  .filter(r => (r.status || "").toLowerCase() === "provisioning" && activeTerminalIds.has(r.id))
+                  .map(r => (
+                    <div key={`terminal-${r.id}`} className="px-5 pb-5">
+                      <ProvisioningTerminal
+                        requestId={r.id}
+                        onComplete={(finalStatus) => {
+                          // Remove from active set once done, refresh data
+                          setActiveTerminalIds(prev => {
+                            const next = new Set(prev);
+                            next.delete(r.id);
+                            return next;
+                          });
+                          fetchRequests();
+                        }}
+                      />
+                    </div>
+                  ))}
               </div>
             )}
 
@@ -948,8 +1032,8 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {[
                         { id: "postgres", label: "PostgreSQL 16", icon: Database, cost: "$15/mo", disabled: false },
-                        { id: "redis", label: "Redis 7.2", icon: HardDrive, cost: "$10/mo", disabled: true },
-                        { id: "s3", label: "AWS S3", icon: Archive, cost: "$5/mo", disabled: true },
+                        { id: "redis", label: "Redis Cluster", icon: HardDrive, cost: "$10/mo", disabled: true },
+                        { id: "s3", label: "S3 Bucket", icon: Archive, cost: "$5/mo", disabled: true },
                       ].map((eng) => {
                         const isSel = provForm.resource_type === eng.id;
                         const disabled = eng.disabled;
@@ -1093,25 +1177,10 @@ export default function DashboardPage() {
                   )}
 
                   {/* Policy Preview (Minimalistic Strip) */}
-                  {(() => {
-                    const cost = PRICING[provForm.resource_type]?.[provForm.instance_size] || 0;
-                    let pStatus = "auto_approved";
-                    let pMsg = "Request fits within auto-approval thresholds. Will provision immediately.";
-                    
-                    if (cost > 100) {
-                      pStatus = "auto_denied";
-                      pMsg = "Exceeds $100/mo hard limit. This request will be automatically denied.";
-                    } else if (
-                      provForm.environment === "dev" && 
-                      provForm.instance_size === "small" && 
-                      provForm.resource_type === "postgres" && 
-                      cost <= 15
-                    ) {
-                      pStatus = "auto_approved";
-                    } else {
-                      pStatus = "pending_approval";
-                      pMsg = "Exceeds auto-approve policy. Requires DevOps team review (est. 2-4 hours).";
-                    }
+                  {policyPreview ? (() => {
+                    const pStatus = policyPreview.decision;
+                    const pMsg = policyPreview.reason;
+                    const matchedPolicies = policyPreview.matched_policies?.map(p => p.policy_name).join(', ');
                     
                     return (
                       <div className={`p-4 rounded-2xl border flex gap-3.5 items-start transition-all duration-300 ${
@@ -1124,11 +1193,11 @@ export default function DashboardPage() {
                            pStatus === "pending_approval" ? <Clock size={18} /> :
                            <AlertCircle size={18} />}
                         </div>
-                        <div>
+                        <div className="flex-1">
                           <h4 className="text-sm font-medium tracking-tight mb-1">
                             {pStatus === "auto_approved" ? "Auto-Approve Eligible" : 
                              pStatus === "pending_approval" ? "Manual Approval Required" : 
-                             "Request Denied (Over Budget)"}
+                             "Request Denied by Policy"}
                           </h4>
                           <p className={`text-xs leading-relaxed ${
                             pStatus === "auto_approved" ? "text-emerald-400/70" :
@@ -1137,10 +1206,20 @@ export default function DashboardPage() {
                           }`}>
                             {pMsg}
                           </p>
+                          {matchedPolicies && (
+                            <p className="text-[10px] uppercase tracking-wider font-mono opacity-50 mt-2">
+                              Matched: {matchedPolicies}
+                            </p>
+                          )}
                         </div>
                       </div>
                     );
-                  })()}
+                  })() : (
+                    <div className="p-4 rounded-2xl border border-white/5 flex gap-3.5 items-center">
+                       <div className="w-4 h-4 rounded-full border-2 border-zinc-500 border-t-transparent animate-spin" />
+                       <span className="text-xs text-zinc-500">Evaluating policies...</span>
+                    </div>
+                  )}
 
                 </div>
 
@@ -1195,51 +1274,54 @@ export default function DashboardPage() {
               </form>
               ) : (
                 /* Terminal Body */
-                <div className="flex flex-col overflow-hidden h-full">
-                  <div className="overflow-y-auto px-6 py-6 space-y-3 flex-1 scrollbar-thin bg-black/40 font-mono text-[11px] rounded-b-3xl">
-                    {terminalLogs.map((log, i) => {
-                      const isError = log.text.includes("[ERROR]") || log.text.includes("❌");
-                      const isSuccess = log.text.includes("✅") || log.text.includes("successfully") || log.text.includes("OK");
-                      const isWarning = log.text.includes("⚠️") || log.text.includes("paused");
-                      
-                      return (
-                        <motion.div 
-                          key={i}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className={`flex gap-3 ${
-                            isError ? "text-red-400" :
-                            isSuccess ? "text-emerald-400" :
-                            isWarning ? "text-amber-400" :
-                            "text-zinc-300"
-                          }`}
-                        >
-                          <span className="text-zinc-600 shrink-0">
-                            {new Date(log.time).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' })}
-                          </span>
-                          <span>{log.text}</span>
-                        </motion.div>
-                      );
-                    })}
-                    {provLoading && (
-                      <motion.div 
-                        initial={{ opacity: 0 }} 
-                        animate={{ opacity: 1 }} 
-                        className="flex gap-3 text-cyan-400/70"
-                      >
-                        <span className="text-zinc-600 shrink-0">
-                          {new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' })}
-                        </span>
-                        <span className="animate-pulse">_</span>
-                      </motion.div>
-                    )}
-                  </div>
+                <div className="flex flex-col h-full bg-[#0a0a0c] rounded-b-3xl">
+                  {provForm._requestId ? (
+                    <div className="p-4 flex-1">
+                      <ProvisioningTerminal 
+                        requestId={provForm._requestId} 
+                        onComplete={() => {
+                          fetchRequests(true);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="overflow-y-auto px-6 py-6 space-y-3 flex-1 scrollbar-thin font-mono text-[11px]">
+                      {terminalLogs.map((log, i) => {
+                        const isError = log.text.includes("[ERROR]") || log.text.includes("❌");
+                        const isSuccess = log.text.includes("✅") || log.text.includes("successfully") || log.text.includes("OK");
+                        const isWarning = log.text.includes("⚠️") || log.text.includes("paused");
+                        
+                        return (
+                          <motion.div 
+                            key={i}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className={`flex gap-3 ${
+                              isError ? "text-red-400" :
+                              isSuccess ? "text-emerald-400" :
+                              isWarning ? "text-amber-400" :
+                              "text-zinc-300"
+                            }`}
+                          >
+                            <span className="text-zinc-600 shrink-0">
+                              {new Date(log.time).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' })}
+                            </span>
+                            <span>{log.text}</span>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {!provLoading && (
-                    <div className="p-6 border-t border-white/5 bg-[#0a0a0c] shrink-0 z-10">
+                    <div className="p-6 border-t border-white/5 bg-[#0a0a0c] shrink-0 z-10 rounded-b-3xl">
                       <button
                         onClick={() => {
                           setShowProvisionModal(false);
-                          setTimeout(() => setProvStep("form"), 300);
+                          setTimeout(() => {
+                            setProvStep("form");
+                            setProvForm(p => ({ ...p, _requestId: null }));
+                          }, 300);
                         }}
                         className="w-full py-3 rounded-xl bg-white/10 text-white font-semibold text-sm hover:bg-white/20 transition-colors shadow-lg"
                       >
