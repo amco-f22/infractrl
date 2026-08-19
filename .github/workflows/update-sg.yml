@@ -43,6 +43,17 @@ jobs:
           role-to-assume: ${{ secrets.GH_ACTIONS_ROLE_ARN }}
           aws-region: us-east-1
           
+      - name: Check if Infrastructure Exists
+        run: |
+          echo "Checking if state file exists for request ${REQUEST_ID}..."
+          if ! aws s3api head-object --bucket infractl-terraform-state --key "state/${REQUEST_ID}.tfstate" >/dev/null 2>&1; then
+            echo "Error: Infrastructure state not found. Cannot update IP for non-existent resources."
+            echo "Please ensure the resource is fully provisioned before updating the IP."
+            exit 1
+          fi
+        env:
+          REQUEST_ID: ${{ github.event.inputs.request_id }}
+
       - name: Update SG Rule
         working-directory: ./terraform
         run: |
