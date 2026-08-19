@@ -307,7 +307,7 @@ The Terraform IAM policy was upgraded to a comprehensive configuration (v5) cove
 ### 5. Localhost API Limitation (GitHub Actions)
 - The GitHub Actions workflow updates the database status via a Python script (`update_status.py`) sending requests to `PROD_API_URL` (passed via GitHub Secrets).
 - If the backend is running locally on `localhost:8000`, the GitHub Actions runner (in the cloud) **cannot** reach it, resulting in a failed status update and the `aws_resource_id` remaining null in the database.
-- **Fix**: The backend must be publicly deployed (e.g., to Render/AWS) or a tunneling tool like ngrok must be used to provide a public URL to the GitHub Actions runner.
+- **Fix**: The backend must be publicly deployed (e.g., to Railway) or a tunneling tool like ngrok must be used to provide a public URL to the GitHub Actions runner.
 
 ---
 
@@ -384,3 +384,37 @@ The Terraform IAM policy was upgraded to a comprehensive configuration (v5) cove
 ### 5. React Infinite Loop on Completion
 - **The Issue:** `ProvisioningTerminal.js` triggered its `onComplete` prop (which called `fetchRequests` to refresh dashboard metrics) when logs signaled success or failure. The dashboard refresh caused a re-render, creating a new `onComplete` function reference, which caused the terminal's `useEffect` to fire again, instantly triggering another `fetchRequests`, locking the browser in an infinite refresh loop.
 - **The Fix:** Introduced a `hasCompletedRef = useRef(false)` inside the terminal component to track callback execution, guaranteeing `onComplete` is fired exactly once per terminal lifecycle.
+
+---
+
+## 🚀 Deployment Architecture (Vercel & Railway)
+
+The application is deployed using a decoupled frontend/backend architecture, distinct from the AWS infrastructure it provisions for users. 
+
+### 1. Frontend (Vercel)
+- **Framework:** Next.js 14 App Router.
+- **Hosting:** Deployed on **Vercel** (`infractrl.vercel.app` or similar).
+- **Environment Variables Required:**
+  - `NEXT_PUBLIC_URL` (Base URL for the frontend)
+  - `AUTH_SECRET` (NextAuth encryption key)
+  - `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` (GitHub OAuth Application credentials)
+  - `BACKEND_API_URL` (Pointer to the Railway deployment, e.g., `https://infractl-api.up.railway.app`)
+  - `INTERNAL_API_KEY` (Pre-shared key to authorize proxy requests to the backend)
+- **Proxy Routing:** Next.js handles all client-side requests via the `/api/backend/[...path]` route handler, which securely injects the `INTERNAL_API_KEY` and forwards the request to Railway, preventing the frontend from exposing API keys to the browser.
+
+### 2. Backend (Railway)
+- **Framework:** FastAPI (Python 3.13).
+- **Hosting:** Deployed on **Railway**.
+- **Database:** Supabase (PostgreSQL), connected via the `DATABASE_URL` environment variable.
+- **Environment Variables Required:**
+  - `DATABASE_URL` (Supabase connection string)
+  - `INTERNAL_API_KEY` (Must match the frontend's key for authentication)
+  - `GITHUB_TOKEN` (Fine-grained PAT to trigger GitHub Actions)
+  - `GITHUB_OWNER` / `GITHUB_REPO` (Target repository for Terraform actions)
+  - `SLACK_WEBHOOK_URL` (For provisioning notifications)
+- **Deployment Process:** Railway automatically builds the backend using the provided `requirements.txt` and `Procfile`/start command (e.g., `uvicorn main:app --host 0.0.0.0 --port $PORT`).
+
+### 3. CI/CD Integration (GitHub Actions)
+- The backend on Railway uses the GitHub REST API to trigger the `.github/workflows/provision.yml` and `update-sg.yml` actions.
+- The GitHub Actions runners (Ubuntu) execute Terraform to provision resources in AWS.
+- Upon success or failure, the GitHub Actions runners send a webhook `POST` request back to the **Railway backend** (`PROD_API_URL` secret) to update the database state, which the Vercel frontend then polls to update the dashboard UI.
