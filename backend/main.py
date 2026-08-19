@@ -143,6 +143,12 @@ class CreateRequest(BaseModel):
         # Strip /32 if user included it, we'll add it in Terraform
         return v.replace('/32', '').strip()
 
+class PolicyPreviewRequest(BaseModel):
+    resource_type: str
+    environment: str
+    instance_size: str
+    requester_email: str
+
 class StatusUpdateRequest(BaseModel):
     status: str
     connection_string: Optional[str] = None
