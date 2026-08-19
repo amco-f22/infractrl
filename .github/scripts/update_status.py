@@ -37,10 +37,17 @@ def main():
         }
         print(f"Updating request {request_id} to 'ready'...")
 
+    webhook_api_key = os.environ.get("WEBHOOK_API_KEY", "")
+    
+    headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': webhook_api_key
+    }
+    
     req = urllib.request.Request(
         url,
         data=json.dumps(data).encode('utf-8'),
-        headers={'Content-Type': 'application/json'},
+        headers=headers,
         method='POST'
     )
 
