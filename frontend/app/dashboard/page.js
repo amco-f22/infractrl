@@ -116,14 +116,13 @@ function CopyButton({ text }) {
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <motion.button
-      whileTap={{ scale: 0.85 }}
+    <button
       onClick={handleCopy}
-      className="p-1 rounded text-zinc-500 hover:text-emerald-400 transition-colors"
+      className="p-1.5 rounded-lg text-zinc-400 hover:text-emerald-400 hover:bg-white/5 active:scale-95 transition-all duration-150"
       title="Copy connection string"
     >
       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-    </motion.button>
+    </button>
   );
 }
 
@@ -1350,27 +1349,24 @@ export default function DashboardPage() {
                         const disabled = eng.disabled;
                         const Ic = eng.icon;
                         return (
-                          <motion.button
+                          <button
                             key={eng.id}
                             type="button"
                             disabled={disabled}
-                            whileHover={disabled ? {} : { y: -2 }}
-                            whileTap={disabled ? {} : { scale: 0.98 }}
-                            transition={{ type: "spring", stiffness: 450, damping: 30 }}
                             onClick={() => { if (!disabled) setProvForm((p) => ({ ...p, resource_type: eng.id })) }}
-                            className={`p-4 rounded-2xl border text-left transition-all duration-300 relative ${
+                            className={`p-4 rounded-2xl border text-left transition-all duration-200 ease-out relative select-none ${
                               disabled
                                 ? "border-white/5 bg-white/[0.01] text-zinc-600 cursor-not-allowed opacity-50"
                                 : isSel
-                                ? "border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_25px_rgba(34,211,238,0.12)] ring-1 ring-cyan-500/30"
-                                : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20 hover:bg-white/[0.04]"
+                                ? "border-cyan-500/50 bg-cyan-500/10 shadow-[0_0_25px_rgba(34,211,238,0.12)] ring-1 ring-cyan-500/30"
+                                : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20 hover:bg-white/[0.04] active:bg-white/[0.06]"
                             }`}
                           >
                             {isSel && !disabled && (
                               <motion.div
                                 layoutId="modalActiveEngineRing"
-                                className="absolute inset-0 rounded-2xl border border-cyan-400/50 pointer-events-none"
-                                transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                                className="absolute inset-0 rounded-2xl border border-cyan-400/60 pointer-events-none"
+                                transition={{ duration: 0.18, ease: "easeOut" }}
                               />
                             )}
                             <div className="flex justify-between items-start mb-3">
@@ -1383,7 +1379,7 @@ export default function DashboardPage() {
                             </div>
                             <p className={`text-sm font-semibold font-mono ${disabled ? "text-zinc-600" : isSel ? "text-white" : "text-zinc-200"}`}>{eng.label}</p>
                             <p className={`text-xs mt-0.5 font-mono ${disabled ? "text-zinc-700" : "text-zinc-500"}`}>{eng.cost}</p>
-                          </motion.button>
+                          </button>
                         );
                       })}
                     </div>
@@ -1406,7 +1402,7 @@ export default function DashboardPage() {
                             key={env.id}
                             type="button"
                             onClick={() => setProvForm((p) => ({ ...p, environment: env.id }))}
-                            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-xs font-semibold uppercase font-mono tracking-wider transition-all relative z-10 ${
+                            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-xs font-semibold uppercase font-mono tracking-wider transition-colors duration-150 relative z-10 select-none ${
                               isSel ? "text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300"
                             }`}
                           >
@@ -1414,7 +1410,7 @@ export default function DashboardPage() {
                               <motion.div
                                 layoutId="modalActiveEnvPill"
                                 className="absolute inset-0 bg-white/10 rounded-xl shadow-md border border-white/15 -z-10"
-                                transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                                transition={{ duration: 0.18, ease: "easeOut" }}
                               />
                             )}
                             <span className={isSel ? env.color : ""}>{env.label}</span>
@@ -1433,29 +1429,26 @@ export default function DashboardPage() {
                       {["small", "medium", "large"].map((sz) => {
                         const isSel = provForm.instance_size === sz;
                         return (
-                          <motion.button
+                          <button
                             key={sz}
                             type="button"
-                            whileHover={{ y: -2 }}
-                            whileTap={{ scale: 0.98 }}
-                            transition={{ type: "spring", stiffness: 450, damping: 30 }}
                             onClick={() => setProvForm((p) => ({ ...p, instance_size: sz }))}
-                            className={`p-3.5 rounded-2xl border text-center transition-all duration-300 relative ${
+                            className={`p-3.5 rounded-2xl border text-center transition-all duration-200 ease-out relative select-none ${
                               isSel
-                                ? "border-emerald-500/40 bg-emerald-500/10 shadow-[0_0_20px_rgba(52,211,153,0.12)] ring-1 ring-emerald-500/30"
-                                : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20 hover:bg-white/[0.04]"
+                                ? "border-emerald-500/50 bg-emerald-500/10 shadow-[0_0_20px_rgba(52,211,153,0.12)] ring-1 ring-emerald-500/30"
+                                : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20 hover:bg-white/[0.04] active:bg-white/[0.06]"
                             }`}
                           >
                             {isSel && (
                               <motion.div
                                 layoutId="modalActiveSizeRing"
-                                className="absolute inset-0 rounded-2xl border border-emerald-400/50 pointer-events-none"
-                                transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                                className="absolute inset-0 rounded-2xl border border-emerald-400/60 pointer-events-none"
+                                transition={{ duration: 0.18, ease: "easeOut" }}
                               />
                             )}
                             <p className={`text-sm font-semibold capitalize font-mono ${isSel ? "text-emerald-300" : "text-zinc-200"}`}>{sz}</p>
                             <p className="text-[11px] text-zinc-500 mt-1 font-mono">{SPECS[sz].cpu} · {SPECS[sz].ram}</p>
-                          </motion.button>
+                          </button>
                         );
                       })}
                     </div>
@@ -1479,7 +1472,7 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           onClick={detectIp}
-                          className="px-5 py-3 rounded-2xl bg-white/[0.04] border border-white/10 text-xs font-mono font-semibold text-zinc-300 hover:bg-white/[0.08] hover:text-white transition-all shadow-sm whitespace-nowrap"
+                          className="px-5 py-3 rounded-2xl bg-white/[0.04] border border-white/10 text-xs font-mono font-semibold text-zinc-300 hover:bg-white/[0.08] hover:text-white transition-all duration-150 shadow-sm whitespace-nowrap active:bg-white/[0.12]"
                         >
                           Detect IP
                         </button>
@@ -1555,7 +1548,7 @@ export default function DashboardPage() {
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -8 }}
-                            transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
                             className="inline-block"
                           >
                             ${PRICING[provForm.resource_type][provForm.instance_size]}/mo
@@ -1565,13 +1558,10 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <motion.button
+                  <button
                     type="submit"
                     disabled={provLoading}
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    transition={{ type: "spring", stiffness: 450, damping: 30 }}
-                    className="w-full flex items-center justify-center gap-2 rounded-2xl bg-white text-black py-3.5 text-sm font-semibold hover:bg-zinc-200 transition-colors shadow-[0_0_30px_rgba(255,255,255,0.15)] font-mono"
+                    className="w-full flex items-center justify-center gap-2 rounded-2xl bg-white text-black py-3.5 text-sm font-semibold hover:bg-zinc-200 transition-all duration-150 shadow-[0_0_30px_rgba(255,255,255,0.15)] font-mono disabled:opacity-50 active:bg-zinc-300"
                   >
                     {provLoading ? (
                       <>
@@ -1584,7 +1574,7 @@ export default function DashboardPage() {
                         <span>Trigger Provisioning</span>
                       </>
                     )}
-                  </motion.button>
+                  </button>
                 </div>
               </form>
               ) : (
