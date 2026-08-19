@@ -336,7 +336,7 @@ async def send_interactive_slack_approval(request_id: str, requester_name: str, 
 # ================================================================
 
 async def verify_slack_signature(request: Request):
-    """Verifies that the request came from Slack."""
+    """Verifies that the request came from Slack. Returns the raw body bytes."""
     secret = os.getenv("SLACK_SIGNING_SECRET")
     if not secret:
         raise HTTPException(status_code=400, detail="Slack signing secret not configured")
@@ -361,12 +361,18 @@ async def verify_slack_signature(request: Request):
 
     if not hmac.compare_digest(my_signature, signature):
         raise HTTPException(status_code=400, detail="Invalid Slack signature")
+    
+    return body
 
 @app.post("/api/slack/interactivity")
 async def slack_interactivity(request: Request, background_tasks: BackgroundTasks):
-    await verify_slack_signature(request)
-    form_data = await request.form()
-    payload_str = form_data.get("payload")
+    raw_body = await verify_slack_signature(request)
+    
+    # Parse form data from the raw body (don't call request.form() — body stream is consumed)
+    from urllib.parse import parse_qs
+    parsed = parse_qs(raw_body.decode("utf-8"))
+    payload_str = parsed.get("payload", [None])[0]
+    
     if not payload_str:
         raise HTTPException(status_code=400, detail="Missing payload")
         
