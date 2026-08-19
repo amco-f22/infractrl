@@ -231,6 +231,32 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
     }
   };
 
+  const [loadingDestroy, setLoadingDestroy] = useState(false);
+  const handleDestroy = async () => {
+    if (!window.confirm("Are you sure you want to permanently destroy this resource? This cannot be undone.")) return;
+    
+    setLoadingDestroy(true);
+    const toastId = toast.loading("Initiating destroy sequence...");
+    try {
+      const res = await fetch(`${API_URL}/api/requests/${req.id}`, { 
+        method: "DELETE",
+        headers: { 'x-user-email': effEmail }
+      });
+      if (res.ok) {
+        toast.success("Resource destruction initiated! It may take a few minutes.", { id: toastId });
+        onRefresh();
+        onClose();
+      } else {
+        const data = await res.json();
+        toast.error(`Destroy failed: ${data.detail || "Unknown error"}`, { id: toastId });
+      }
+    } catch {
+      toast.error("Network error", { id: toastId });
+    } finally {
+      setLoadingDestroy(false);
+    }
+  };
+
   const handleApprove = async () => {
     setLoadingApprove(true);
     const toastId = toast.loading("Approving request...");
@@ -524,6 +550,23 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
                   {loadingDeny ? "Denying..." : "Deny"}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Active Resource Controls (Danger Zone) */}
+          {["ready", "failed"].includes((req.status || "").toLowerCase()) && isOwner && (
+            <div className="p-5 rounded-2xl bg-red-500/5 border border-red-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <h4 className="text-sm font-semibold text-red-400">Danger Zone</h4>
+                <p className="text-xs text-red-400/70 mt-0.5">Permanently destroy this resource and its data.</p>
+              </div>
+              <button
+                onClick={handleDestroy}
+                disabled={loadingDestroy}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-500/20 text-red-300 border border-red-500/30 font-semibold text-xs hover:bg-red-500/30 transition-colors disabled:opacity-50"
+              >
+                {loadingDestroy ? "Initiating Destroy..." : "Destroy Resource"}
+              </button>
             </div>
           )}
         </div>

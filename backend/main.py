@@ -220,9 +220,42 @@ async def trigger_github_workflow(request_id: str, resource_type: str, instance_
             log_failure(msg)
             return False
 
+async def trigger_destroy_workflow(request_id: str, resource_type: str, instance_size: str, email: str, environment: str):
+    """Triggers the GitHub Actions destroy workflow."""
+    token = os.getenv("GITHUB_TOKEN")
+    owner = os.getenv("GITHUB_OWNER")
+    repo = os.getenv("GITHUB_REPO")
+    
+    if not all([token, owner, repo]):
+        print("GitHub configuration missing, skipping destroy workflow trigger.")
+        return False
 
-
-# ========================
+    url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/destroy.yml/dispatches"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {token}",
+        "X-GitHub-Api-Version": "2022-11-28"
+    }
+    payload = {
+        "ref": "main",
+        "inputs": {
+            "request_id": request_id,
+            "resource_type": resource_type,
+            "instance_size": instance_size,
+            "requester_email": email,
+            "environment": environment
+        }
+    }
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            print(f"Triggered GitHub Action destroy for request {request_id}")
+            return True
+        except Exception as e:
+            print(f"Failed to trigger GitHub Action destroy: {e}")
+            return False# ========================
 # Slack Integration
 # ========================
 async def send_slack_notification(message: str):
@@ -1275,6 +1308,65 @@ async def update_provisioning_progress(
             
         conn.commit()
         return {"status": "success", "message": "Progress recorded"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+# ---------------------------------------------------------------
+# Feature: Manual Destroy
+# ---------------------------------------------------------------
+@app.delete("/api/requests/{request_id}")
+async def delete_request(request_id: str, background_tasks: BackgroundTasks, x_user_email: str = Header(...)):
+    """
+    Manually triggers the destruction of a provisioned resource before its expiry date.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT * FROM requests WHERE id = %s", (request_id,))
+        req = cur.fetchone()
+        if not req:
+            raise HTTPException(status_code=404, detail="Request not found")
+            
+        # Check ownership or admin status
+        user_email = x_user_email.strip().lower()
+        if req["requester_email"].strip().lower() != user_email:
+            admin_emails = [e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()]
+            if user_email not in admin_emails:
+                raise HTTPException(status_code=403, detail="Access denied: You can only destroy your own resources")
+
+        if req["status"] not in ["ready", "failed"]:
+            raise HTTPException(status_code=400, detail=f"Cannot destroy a resource in {req['status']} state")
+
+        # Update status to destroying
+        cur.execute("UPDATE requests SET status = 'destroying' WHERE id = %s", (request_id,))
+        
+        # Log action
+        log_audit(conn, request_id, "destroy_initiated", user_email, "Manual destroy initiated by user")
+        
+        conn.commit()
+
+        # Trigger GitHub Action background task
+        background_tasks.add_task(
+            trigger_destroy_workflow,
+            request_id,
+            req["resource_type"],
+            req["instance_size"],
+            req["requester_email"],
+            req["environment"]
+        )
+        
+        # Slack notification
+        slack_msg = f"🗑️ *Manual Destroy Initiated*: `{request_id}` by {user_email}."
+        background_tasks.add_task(send_slack_notification, slack_msg)
+
+        return {"message": "Resource destruction initiated", "status": "destroying"}
+
     except HTTPException:
         raise
     except Exception as e:

@@ -1,0 +1,162 @@
+name: Manual Destroy Resource
+
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        description: 'The UUID of the request to destroy'
+        required: true
+        type: string
+      resource_type:
+        description: 'Type of resource (e.g. postgres, redis, s3)'
+        required: true
+        type: string
+      instance_size:
+        description: 'Size of the instance (e.g. small, medium, large)'
+        required: true
+        type: string
+      requester_email:
+        description: 'Email of the requester'
+        required: true
+        type: string
+      environment:
+        description: 'Environment (dev, staging, prod)'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  destroy:
+    name: Destroy Infrastructure
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.GH_ACTIONS_ROLE_ARN }}
+          aws-region: us-east-1
+          
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ">= 1.0"
+          
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: pip install psycopg2-binary httpx
+        
+      - name: Report Progress (Start)
+        env:
+          WEBHOOK_URL: ${{ secrets.BACKEND_API_URL }}/api/requests/${{ inputs.request_id }}/progress
+          WEBHOOK_API_KEY: ${{ secrets.WEBHOOK_API_KEY }}
+          RUN_URL: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: |
+          python -c "
+          import os, httpx
+          url = os.environ['WEBHOOK_URL']
+          headers = {'x-api-key': os.environ['WEBHOOK_API_KEY']}
+          payload = {
+              'step': 'terraform_destroy',
+              'status': 'in_progress',
+              'message': 'Starting Terraform destroy...',
+              'details': {'run_url': os.environ['RUN_URL']}
+          }
+          try:
+              httpx.post(url, headers=headers, json=payload)
+          except Exception as e:
+              print(f'Webhook failed: {e}')
+          "
+          
+      - name: Terraform Init
+        env:
+          TF_STATE_BUCKET: infractl-terraform-state
+        working-directory: terraform
+        run: |
+          terraform init -reconfigure \
+            -backend-config="bucket=$TF_STATE_BUCKET" \
+            -backend-config="key=state/${{ inputs.request_id }}.tfstate" \
+            -backend-config="region=us-east-1" \
+            -backend-config="use_lockfile=true" \
+            -backend-config="encrypt=true"
+            
+      - name: Terraform Destroy
+        working-directory: terraform
+        run: |
+          terraform destroy -auto-approve \
+            -var="request_id=${{ inputs.request_id }}" \
+            -var="resource_type=${{ inputs.resource_type }}" \
+            -var="instance_size=${{ inputs.instance_size }}" \
+            -var="requester_email=${{ inputs.requester_email }}" \
+            -var="environment=${{ inputs.environment }}"
+            
+      - name: Mark as Deleted in DB
+        if: success()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REQUEST_ID: ${{ inputs.request_id }}
+        run: |
+          python -c "
+          import os, psycopg2
+          try:
+              conn = psycopg2.connect(os.environ['DATABASE_URL'])
+              cur = conn.cursor()
+              cur.execute(\"UPDATE requests SET status = 'deleted' WHERE id = %s\", (os.environ['REQUEST_ID'],))
+              conn.commit()
+              cur.close()
+              conn.close()
+          except Exception as e:
+              print(f'DB update failed: {e}')
+          "
+          
+      - name: Report Progress (Complete)
+        if: success()
+        env:
+          WEBHOOK_URL: ${{ secrets.BACKEND_API_URL }}/api/requests/${{ inputs.request_id }}/progress
+          WEBHOOK_API_KEY: ${{ secrets.WEBHOOK_API_KEY }}
+        run: |
+          python -c "
+          import os, httpx
+          url = os.environ['WEBHOOK_URL']
+          headers = {'x-api-key': os.environ['WEBHOOK_API_KEY']}
+          payload = {
+              'step': 'complete',
+              'status': 'success',
+              'message': 'Resource successfully destroyed.'
+          }
+          try:
+              httpx.post(url, headers=headers, json=payload)
+          except Exception as e:
+              print(f'Webhook failed: {e}')
+          "
+          
+      - name: Report Progress (Failed)
+        if: failure()
+        env:
+          WEBHOOK_URL: ${{ secrets.BACKEND_API_URL }}/api/requests/${{ inputs.request_id }}/progress
+          WEBHOOK_API_KEY: ${{ secrets.WEBHOOK_API_KEY }}
+        run: |
+          python -c "
+          import os, httpx
+          url = os.environ['WEBHOOK_URL']
+          headers = {'x-api-key': os.environ['WEBHOOK_API_KEY']}
+          payload = {
+              'step': 'terraform_destroy',
+              'status': 'failed',
+              'message': 'Terraform destroy failed. Please check logs.'
+          }
+          try:
+              httpx.post(url, headers=headers, json=payload)
+          except Exception as e:
+              print(f'Webhook failed: {e}')
+          "
