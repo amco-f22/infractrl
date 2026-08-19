@@ -29,6 +29,9 @@ permissions:
 jobs:
   update-sg:
     runs-on: ubuntu-latest
+    concurrency:
+      group: provision-${{ github.event.inputs.request_id }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       
@@ -62,7 +65,7 @@ jobs:
             -backend-config="bucket=infractl-terraform-state" \
             -backend-config="key=state/${{ github.event.inputs.request_id }}.tfstate" \
             -backend-config="region=us-east-1" \
-            -backend-config="use_lockfile=true"
+            -backend-config="dynamodb_table=infractl-terraform-locks"
             
           # Run terraform apply with the new IP and original configuration values
           terraform apply -auto-approve \
@@ -72,3 +75,17 @@ jobs:
             -var="requester_email=${{ github.event.inputs.email }}" \
             -var="environment=${{ github.event.inputs.environment }}" \
             -var="allowed_ip=${{ github.event.inputs.new_allowed_ip }}/32"
+
+      - name: Report — SG Update Failed
+        if: failure()
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          WEBHOOK_API_KEY: ${{ secrets.WEBHOOK_API_KEY }}
+          REQUEST_ID: ${{ github.event.inputs.request_id }}
+        run: |
+          [ -z "$BACKEND_URL" ] && exit 0
+          curl -sf -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: ${WEBHOOK_API_KEY}" \
+            -d '{"step":"sg_update","status":"failed","message":"❌ Failed to update Security Group. Check GitHub Actions logs."}' \
+            || echo "Backend callback failed"

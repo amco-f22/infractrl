@@ -43,7 +43,7 @@ export default function ProvisioningTerminal({ requestId, onComplete }) {
     if (!session?.user?.email) return;
     try {
       const res = await fetch(
-        `http://localhost:8000/api/requests/${requestId}/logs`,
+        `/api/backend/api/requests/${requestId}/logs`,
         { headers: { "x-user-email": session.user.email } }
       );
       if (!res.ok) {

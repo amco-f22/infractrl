@@ -581,7 +581,7 @@ export default function DashboardPage() {
               instance_size: provForm.instance_size,
               resource_type: provForm.resource_type,
               estimated_cost: cost,
-              requester_email: session.user.email
+              requester_email: session?.user?.email || "unknown@example.com"
             })
           });
           if (res.ok) {
@@ -707,7 +707,7 @@ export default function DashboardPage() {
       const payload = {
         ...provForm,
         requester_name: session.user.name || "Developer",
-        requester_email: session.user.email,
+        requester_email: session?.user?.email || "unknown@example.com",
         allowed_ip: provForm.allowed_ip || "0.0.0.0",
       };
       fetch(`${API_URL}/api/requests`, {
@@ -731,7 +731,7 @@ export default function DashboardPage() {
     const payload = {
       ...provForm,
       requester_name: session.user.name || "Developer",
-      requester_email: session.user.email,
+      requester_email: session?.user?.email || "unknown@example.com",
       allowed_ip: provForm.allowed_ip || "0.0.0.0",
     };
 

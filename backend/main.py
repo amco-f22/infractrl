@@ -459,6 +459,7 @@ async def create_request(request_data: CreateRequest, background_tasks: Backgrou
         conn.commit()
         
         # Actions based on decision
+        if decision == PolicyAction.AUTO_APPROVED:
             background_tasks.add_task(
                 trigger_github_workflow, 
                 req_id, request_data.resource_type, request_data.instance_size, 
