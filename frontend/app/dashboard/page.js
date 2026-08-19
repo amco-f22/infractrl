@@ -157,11 +157,20 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
 
   const handleUpdateIp = async () => {
     setLoadingIp(true);
-    const toastId = toast.loading("Detecting current IP and updating security group...");
+    const toastId = toast.loading("Detecting current IP...");
     try {
       const ipRes = await fetch("https://api.ipify.org?format=json");
       const ipData = await ipRes.json();
       const currentIp = ipData.ip;
+      
+      // Prevent triggering the workflow if the IP is already correct
+      if (currentIp === req.allowed_ip) {
+        toast.info("Your current IP is already whitelisted.", { id: toastId });
+        setLoadingIp(false);
+        return;
+      }
+      
+      toast.loading("Updating security group...", { id: toastId });
       
       const res = await fetch(`${API_URL}/api/requests/${req.id}/update-ip`, {
         method: "POST",
