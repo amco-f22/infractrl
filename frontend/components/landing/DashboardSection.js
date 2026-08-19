@@ -96,42 +96,39 @@ export default function DashboardSection() {
               ticking up by the second as your infrastructure runs.
             </p>
           </div>
-          <motion.span
-            whileHover={{ scale: 1.05 }}
-            className="inline-flex items-center gap-2 self-start rounded-full border border-green-400/30 bg-green-400/10 px-3.5 py-1.5 text-xs text-green-300 font-mono shadow-sm cursor-default hover:border-green-400/50 hover:bg-green-400/20 transition-colors"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+          <span className="inline-flex items-center gap-2 self-start rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3.5 py-1.5 text-xs text-emerald-300 font-mono shadow-sm cursor-default">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
             Live Telemetry
-          </motion.span>
+          </span>
         </div>
 
-        {/* Summary stats matching logo palette with Spotlight and interactive hover */}
+        {/* Summary stats matching landing page SpotlightCard pattern */}
         <div className="mt-10 grid sm:grid-cols-3 gap-4">
           <StatCard
             icon={Gauge}
             label="Estimated monthly cost"
             value={fmt(monthlyTotal)}
             accent="from-green-400 via-emerald-400 to-cyan-400"
-            spotlightColor="rgba(74, 222, 128, 0.22)"
+            spotlightColor="rgba(74, 222, 128, 0.2)"
           />
           <StatCard
             icon={Activity}
             label="Active resources"
             value={String(active.length)}
             accent="from-emerald-400 to-cyan-400"
-            spotlightColor="rgba(34, 211, 238, 0.22)"
+            spotlightColor="rgba(34, 211, 238, 0.2)"
           />
           <StatCard
             icon={TrendingUp}
             label="Live spend so far"
             value={fmt(liveTotal, 4)}
             accent="from-green-400 to-teal-400"
-            spotlightColor="rgba(52, 211, 153, 0.22)"
+            spotlightColor="rgba(52, 211, 153, 0.2)"
             live
           />
         </div>
 
-        {/* Resource list with Spotlight & interactive row hover highlights */}
+        {/* Resource list with Spotlight & clean subtle row highlights */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -140,7 +137,7 @@ export default function DashboardSection() {
           className="mt-6"
         >
           <SpotlightCard
-            spotlightColor="rgba(45, 212, 191, 0.12)"
+            spotlightColor="rgba(45, 212, 191, 0.15)"
             className="rounded-2xl border border-white/10 bg-white/[0.025] overflow-hidden shadow-2xl hover:border-white/20 transition-all duration-300"
           >
             <div className="hidden sm:grid grid-cols-12 gap-4 px-6 py-3.5 border-b border-white/10 text-[11px] uppercase tracking-wider text-zinc-400 font-mono bg-white/[0.01]">
@@ -172,38 +169,35 @@ export default function DashboardSection() {
                   return (
                     <div
                       key={r.id}
-                      className="group relative grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 px-6 py-4 items-center hover:bg-white/[0.04] transition-all duration-200 cursor-pointer overflow-hidden"
+                      className="group grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 px-6 py-4 items-center hover:bg-white/[0.03] transition-colors duration-200 cursor-default"
                     >
-                      {/* Left accent hover glow bar */}
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-400 via-emerald-400 to-green-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-
                       <div className="sm:col-span-4 flex items-center gap-3.5 min-w-0">
-                        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border ${t.ring} ${t.color} group-hover:scale-110 group-hover:border-white/30 group-hover:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all duration-200`}>
+                        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border ${t.ring} ${t.color}`}>
                           <Database className="w-4 h-4" />
                         </span>
                         <div className="min-w-0">
-                          <div className="text-sm font-semibold text-white font-mono truncate group-hover:text-cyan-300 transition-colors duration-200">
+                          <div className="text-sm font-semibold text-white font-mono truncate group-hover:text-cyan-200 transition-colors">
                             {name}
                           </div>
-                          <div className="text-[11px] text-zinc-400 font-mono group-hover:text-zinc-300 transition-colors">
+                          <div className="text-[11px] text-zinc-400 font-mono">
                             {r.instance_size || "small"} · {r.environment || "dev"}
                           </div>
                         </div>
                       </div>
-                      <div className="sm:col-span-2 flex items-center gap-2 text-sm text-zinc-300 font-mono group-hover:text-white transition-colors">
-                        <span className={`h-2 w-2 rounded-full ${t.dot} group-hover:shadow-[0_0_8px_currentColor] transition-all`} />
+                      <div className="sm:col-span-2 flex items-center gap-2 text-sm text-zinc-300 font-mono">
+                        <span className={`h-2 w-2 rounded-full ${t.dot}`} />
                         {t.label}
                       </div>
                       <div className="sm:col-span-2">
-                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-mono transition-all duration-200 ${s.cls} group-hover:scale-105 group-hover:brightness-125`}>
+                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-mono ${s.cls}`}>
                           {s.pulse && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
                           {s.label}
                         </span>
                       </div>
-                      <div className="sm:col-span-2 sm:text-right text-sm font-semibold text-emerald-300 font-mono group-hover:text-emerald-200 group-hover:scale-105 transform origin-right transition-all duration-200">
+                      <div className="sm:col-span-2 sm:text-right text-sm font-semibold text-emerald-300 font-mono">
                         {fmt(getMonthlyCost(r))}
                       </div>
-                      <div className="sm:col-span-2 sm:text-right font-mono text-[13px] text-cyan-200 tabular-nums font-bold group-hover:text-cyan-100 group-hover:scale-105 transform origin-right transition-all duration-200">
+                      <div className="sm:col-span-2 sm:text-right font-mono text-[13px] text-cyan-200 tabular-nums font-bold">
                         {fmt(liveSpend(r, now), 4)}
                       </div>
                     </div>
@@ -225,29 +219,28 @@ function StatCard({ icon: Icon, label, value, accent, live, spotlightColor = "rg
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.45 }}
-      whileHover={{ y: -5, transition: { duration: 0.2 } }}
     >
       <SpotlightCard
         spotlightColor={spotlightColor}
-        className="p-5 h-full group hover:border-white/20 transition-all duration-300 shadow-lg hover:shadow-cyan-500/10 cursor-default"
+        className="p-5 h-full hover:border-white/20 transition-all duration-300 shadow-sm"
       >
         <div className="flex items-center justify-between">
-          <span className={`grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br ${accent} text-black font-bold shadow-md group-hover:scale-110 group-hover:shadow-[0_0_15px_rgba(52,211,153,0.3)] transition-all duration-300`}>
+          <span className={`grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br ${accent} text-black font-bold shadow-md shadow-emerald-500/10`}>
             <Icon className="w-4 h-4" />
           </span>
           {live ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-mono group-hover:bg-emerald-500/20 transition-colors">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-mono">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               live
             </span>
           ) : (
-            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider group-hover:text-zinc-400 transition-colors">Metrics</span>
+            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Metrics</span>
           )}
         </div>
-        <div className="mt-4 text-2xl sm:text-3xl font-semibold tabular-nums text-white font-mono group-hover:text-cyan-200 transition-colors duration-200">
+        <div className="mt-4 text-2xl sm:text-3xl font-semibold tabular-nums text-white font-mono">
           {value}
         </div>
-        <div className="mt-1 text-xs text-zinc-400 font-mono group-hover:text-zinc-300 transition-colors">
+        <div className="mt-1 text-xs text-zinc-400 font-mono">
           {label}
         </div>
       </SpotlightCard>
