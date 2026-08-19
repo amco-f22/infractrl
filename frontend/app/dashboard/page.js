@@ -127,17 +127,37 @@ function CopyButton({ text }) {
   );
 }
 
-function ConnectionCell({ req, session }) {
+function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
   const [revealed, setRevealed] = useState(false);
   const [fullString, setFullString] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingReveal, setLoadingReveal] = useState(false);
+  const [loadingIp, setLoadingIp] = useState(false);
+  const [loadingApprove, setLoadingApprove] = useState(false);
+  const [loadingDeny, setLoadingDeny] = useState(false);
+  const [loadingExtend, setLoadingExtend] = useState(false);
+  const [modalNow, setModalNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setModalNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  if (!req) return null;
 
   const API_URL = "/api/backend";
   const isOwner = session?.user?.email && session.user.email === req.requester_email;
+  const type = (req.resource_type || "postgres").toLowerCase();
+  const t = typeMeta[type] || typeMeta.postgres;
+  const TypeIcon = t.icon || Database;
+  const effStatus = getEffectiveStatus(req);
+  const s = statusMeta[effStatus] || statusMeta.ready;
+  const name = req.name || `${req.environment || 'dev'}-${req.resource_type || 'db'}-${(req.id || '').substring(0, 4)}`;
+  const canExtend = !["deleted", "failed"].includes((req.status || "").toLowerCase()) && isOwner;
+  const spec = SPECS[req.instance_size || "small"] || SPECS.small;
 
   const handleUpdateIp = async () => {
-    setLoading(true);
-    const toastId = toast.loading("Updating security group...");
+    setLoadingIp(true);
+    const toastId = toast.loading("Detecting current IP and updating security group...");
     try {
       const ipRes = await fetch("https://api.ipify.org?format=json");
       const ipData = await ipRes.json();
@@ -152,17 +172,15 @@ function ConnectionCell({ req, session }) {
         body: JSON.stringify({ new_allowed_ip: currentIp }),
       });
       if (res.ok) {
-        toast.success(`Network locked to your current IP: ${currentIp}`, { id: toastId });
-        if (typeof window !== "undefined") {
-          setTimeout(() => window.location.reload(), 1000);
-        }
+        toast.success(`Network locked to IP: ${currentIp}`, { id: toastId });
+        onRefresh();
       } else {
-        toast.error("Failed to update IP", { id: toastId });
+        toast.error("Failed to update firewall IP", { id: toastId });
       }
     } catch (e) {
-      toast.error("Network error", { id: toastId });
+      toast.error("Network error updating IP", { id: toastId });
     } finally {
-      setLoading(false);
+      setLoadingIp(false);
     }
   };
 
@@ -171,7 +189,7 @@ function ConnectionCell({ req, session }) {
       setRevealed(false);
       return;
     }
-    setLoading(true);
+    setLoadingReveal(true);
     try {
       const res = await fetch(
         `${API_URL}/api/requests/${req.id}/connection-string`, {
@@ -182,19 +200,36 @@ function ConnectionCell({ req, session }) {
         const data = await res.json();
         setFullString(data.connection_string);
         setRevealed(true);
-        toast.info("Connection string credentials revealed");
+        toast.info("Connection credentials revealed");
       } else {
-        toast.error("Access denied: You can only reveal your own connection strings");
+        toast.error("Access denied: Only the owner can reveal plaintext credentials");
       }
     } catch {
       toast.error("Failed to retrieve connection string");
     } finally {
-      setLoading(false);
+      setLoadingReveal(false);
+    }
+  };
+
+  const handleExtend = async () => {
+    setLoadingExtend(true);
+    try {
+      const res = await fetch(`${API_URL}/api/requests/${req.id}/extend`, { method: "POST" });
+      if (res.ok) {
+        toast.success("Lifecycle extended by +7 days!");
+        onRefresh();
+      } else {
+        toast.error("Failed to extend lifespan");
+      }
+    } catch {
+      toast.error("Network error");
+    } finally {
+      setLoadingExtend(false);
     }
   };
 
   const handleApprove = async () => {
-    setLoading(true);
+    setLoadingApprove(true);
     const toastId = toast.loading("Approving request...");
     try {
       const res = await fetch(`${API_URL}/api/requests/${req.id}/approve`, { 
@@ -202,8 +237,9 @@ function ConnectionCell({ req, session }) {
         headers: { 'x-user-email': session?.user?.email || '' }
       });
       if (res.ok) {
-        toast.success("Request approved and provisioning started!", { id: toastId });
-        setTimeout(() => window.location.reload(), 1000);
+        toast.success("Request approved! Terraform provisioning initiated.", { id: toastId });
+        onRefresh();
+        onClose();
       } else {
         const data = await res.json();
         toast.error(`Approval failed: ${data.detail}`, { id: toastId });
@@ -211,12 +247,12 @@ function ConnectionCell({ req, session }) {
     } catch {
       toast.error("Network error", { id: toastId });
     } finally {
-      setLoading(false);
+      setLoadingApprove(false);
     }
   };
 
   const handleDeny = async () => {
-    setLoading(true);
+    setLoadingDeny(true);
     const toastId = toast.loading("Denying request...");
     try {
       const res = await fetch(`${API_URL}/api/requests/${req.id}/deny`, { 
@@ -225,7 +261,8 @@ function ConnectionCell({ req, session }) {
       });
       if (res.ok) {
         toast.success("Request denied.", { id: toastId });
-        setTimeout(() => window.location.reload(), 1000);
+        onRefresh();
+        onClose();
       } else {
         const data = await res.json();
         toast.error(`Denial failed: ${data.detail}`, { id: toastId });
@@ -233,88 +270,273 @@ function ConnectionCell({ req, session }) {
     } catch {
       toast.error("Network error", { id: toastId });
     } finally {
-      setLoading(false);
+      setLoadingDeny(false);
     }
   };
 
-  if (!req.connection_string) {
-    const s = (req.status || "").toLowerCase();
-    if (s === "failed") return <span className="text-xs text-red-400/80 font-mono">Failed</span>;
-    if (s === "deleted") return <span className="text-xs text-zinc-600 font-mono">Destroyed</span>;
-    if (s === "auto_denied") return <span className="text-xs text-red-400/80 font-mono">Auto-Denied</span>;
-    
-    if (s === "pending_approval") {
-      return (
-        <div className="flex items-center gap-2">
-          {isOwner && (
-            <>
-              <button
-                onClick={handleApprove}
-                disabled={loading}
-                className="px-3 py-1 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors text-xs font-semibold disabled:opacity-50"
-              >
-                Approve
-              </button>
-              <button
-                onClick={handleDeny}
-                disabled={loading}
-                className="px-3 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors text-xs font-semibold disabled:opacity-50"
-              >
-                Deny
-              </button>
-            </>
-          )}
-        </div>
-      );
-    }
-    
-    return <span className="text-xs text-zinc-500 font-mono animate-pulse">Provisioning...</span>;
-  }
-
   return (
-    <div className="flex flex-col items-end gap-1 font-mono text-xs">
-      <div className="flex items-center gap-1.5">
-        <span className="text-cyan-200 truncate max-w-[140px] md:max-w-[190px]">
-          {revealed && fullString ? fullString : req.connection_string}
-        </span>
-        {revealed && fullString && <CopyButton text={fullString} />}
-        {isOwner && (
-          <motion.button
-            whileTap={{ scale: 0.85 }}
-            onClick={handleReveal}
-            disabled={loading}
-            className={`p-1 rounded transition-colors ${
-              revealed ? "text-amber-400 hover:text-amber-300" : "text-zinc-500 hover:text-zinc-300"
-            }`}
-            title={revealed ? "Hide credentials" : "Owner Reveal: Show plain credentials"}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-xl"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 15 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 10 }}
+        transition={springTransition}
+        onClick={(e) => e.stopPropagation()}
+        className="relative max-w-2xl w-full rounded-3xl border border-white/10 bg-[#0a0a0c] shadow-[0_0_80px_rgba(0,0,0,0.9)] flex flex-col max-h-[90vh] overflow-hidden ring-1 ring-white/10"
+      >
+        {/* Modal Header */}
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5 shrink-0 bg-[#0a0a0c]/90 backdrop-blur-md z-10">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl border ${t.ring} ${t.color} shadow-inner`}>
+              <TypeIcon className="w-5 h-5" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg font-semibold text-white font-mono truncate">{name}</h3>
+                <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-mono ${s.cls}`}>
+                  {s.pulse && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
+                  {s.label}
+                </span>
+                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-zinc-400">
+                  {req.environment || "dev"}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-500 font-mono truncate mt-0.5">
+                ID: {req.id} · Owner: {req.requester_email}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
           >
-            {loading ? (
-              <div className="w-3 h-3 border border-zinc-400 border-t-transparent rounded-full animate-spin" />
-            ) : revealed ? (
-              <EyeOff size={13} />
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="overflow-y-auto px-6 py-6 space-y-6 flex-1 scrollbar-thin scrollbar-thumb-white/10">
+          {/* Top 3 Telemetry Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Monthly Run Rate</span>
+              <div className="mt-2 text-xl font-bold font-mono text-emerald-300">
+                {fmt(getMonthlyCost(req))} <span className="text-xs text-zinc-500 font-normal">/mo</span>
+              </div>
+              <span className="text-[10px] text-zinc-500 font-mono mt-1 capitalize">{req.instance_size || "small"} tier spec</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Live Accrued Spend</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-ping" />
+              </div>
+              <div className="mt-2 text-xl font-bold font-mono text-cyan-200 tabular-nums">
+                {fmt(liveSpend(req, modalNow), 4)}
+              </div>
+              <span className="text-[10px] text-zinc-500 font-mono mt-1">Real-time meter</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Lifecycle Expiry</span>
+              <div className="mt-2 text-xs font-semibold font-mono text-amber-300 truncate">
+                {req.expiry_date ? `${req.expiry_date}` : "7 Days Default"}
+              </div>
+              {canExtend ? (
+                <button
+                  onClick={handleExtend}
+                  disabled={loadingExtend}
+                  className="mt-2 w-full py-1 px-2 rounded-lg text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all flex items-center justify-center gap-1.5"
+                >
+                  {loadingExtend ? <Clock size={11} className="animate-spin" /> : <CalendarPlus size={11} />}
+                  <span>+7d Extend</span>
+                </button>
+              ) : (
+                <span className="text-[10px] text-zinc-500 font-mono mt-1">Auto-destroys on expiry</span>
+              )}
+            </div>
+          </div>
+
+          {/* Connection Credentials Card */}
+          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Shield size={14} className="text-cyan-400" />
+                <span className="text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold">
+                  Connection URI & Credentials
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-zinc-500">
+                {req.connection_string ? "Encrypted TLS 1.3" : "Pending Provision"}
+              </span>
+            </div>
+
+            {req.connection_string ? (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between gap-2 p-3 bg-black/60 border border-white/10 rounded-xl font-mono text-xs text-cyan-200">
+                  <span className="select-all break-all text-xs">
+                    {revealed && fullString ? fullString : req.connection_string}
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    <CopyButton text={revealed && fullString ? fullString : req.connection_string} />
+                    {isOwner && (
+                      <button
+                        onClick={handleReveal}
+                        disabled={loadingReveal}
+                        className={`p-1.5 rounded-lg border text-xs transition-all ${
+                          revealed 
+                            ? "border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20" 
+                            : "border-white/10 bg-white/5 text-zinc-400 hover:text-white hover:border-white/20"
+                        }`}
+                        title={revealed ? "Mask credentials" : "Show plain credentials"}
+                      >
+                        {loadingReveal ? (
+                          <div className="w-3.5 h-3.5 border border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                        ) : revealed ? (
+                          <EyeOff size={14} />
+                        ) : (
+                          <Eye size={14} />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
+                  <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                    <span className="text-zinc-500 block text-[9px] uppercase">Engine</span>
+                    <span className="text-zinc-200">PostgreSQL 16</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                    <span className="text-zinc-500 block text-[9px] uppercase">Port</span>
+                    <span className="text-zinc-200">5432</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                    <span className="text-zinc-500 block text-[9px] uppercase">Database</span>
+                    <span className="text-zinc-200">postgres</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                    <span className="text-zinc-500 block text-[9px] uppercase">Username</span>
+                    <span className="text-zinc-200">infraadmin</span>
+                  </div>
+                </div>
+              </div>
             ) : (
-              <Eye size={13} />
+              <div className="p-4 rounded-xl bg-black/40 border border-dashed border-white/10 text-center text-xs font-mono text-zinc-500">
+                Connection string will be generated automatically once Terraform finishes provisioning.
+              </div>
             )}
-          </motion.button>
-        )}
-      </div>
-      {req.allowed_ip && (
-        <div className="flex items-center gap-1 text-[10px] text-zinc-500">
-          <Shield size={10} />
-          <span>Locked to {req.allowed_ip}</span>
-          {isOwner && (
-            <button 
-              onClick={handleUpdateIp}
-              disabled={loading}
-              className="ml-1 text-cyan-400/70 hover:text-cyan-300 underline underline-offset-2 disabled:opacity-50"
-              title="Update security group to your current IP"
-            >
-              Update IP
-            </button>
+          </div>
+
+          {/* Network Security / Security Group */}
+          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold flex items-center gap-2">
+                <Shield size={14} className="text-emerald-400" />
+                Network Firewall & Security Group
+              </span>
+              <span className="text-[10px] font-mono text-emerald-400/90 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                IP Locked
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-black/40 border border-white/5 rounded-xl text-xs font-mono">
+              <div>
+                <span className="text-zinc-500 text-[10px] uppercase block">Allowed Ingress CIDR</span>
+                <span className="text-white font-semibold">{req.allowed_ip ? `${req.allowed_ip}/32` : "0.0.0.0/0 (Open)"}</span>
+              </div>
+
+              {isOwner && (
+                <button
+                  onClick={handleUpdateIp}
+                  disabled={loadingIp}
+                  className="px-3.5 py-2 rounded-xl text-xs font-mono font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {loadingIp ? <div className="w-3 h-3 border border-cyan-300 border-t-transparent rounded-full animate-spin" /> : <RefreshCw size={13} />}
+                  <span>Update to Current IP</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Hardware & Cloud Infrastructure Specs */}
+          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
+            <span className="text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold block">
+              Provisioned Hardware Profile
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs font-mono">
+              <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                <span className="text-[10px] text-zinc-500 uppercase block">Compute Core</span>
+                <span className="text-white">{spec.cpu}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                <span className="text-[10px] text-zinc-500 uppercase block">Memory</span>
+                <span className="text-white">{spec.ram}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                <span className="text-[10px] text-zinc-500 uppercase block">Storage</span>
+                <span className="text-white">{spec.storage}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                <span className="text-[10px] text-zinc-500 uppercase block">Region</span>
+                <span className="text-white">AWS us-east-1</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                <span className="text-[10px] text-zinc-500 uppercase block">Created At</span>
+                <span className="text-white">{req.created_at ? new Date(req.created_at).toLocaleDateString() : "Just now"}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                <span className="text-[10px] text-zinc-500 uppercase block">Expiry Date</span>
+                <span className="text-white">{req.expiry_date || "7 Days"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Pending Approval Controls (if applicable) */}
+          {(req.status || "").toLowerCase() === "pending_approval" && (
+            <div className="p-5 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <h4 className="text-sm font-semibold text-purple-200">Pending Governance Review</h4>
+                <p className="text-xs text-purple-300/70 mt-0.5">This request requires platform approval before AWS provisioning.</p>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={handleApprove}
+                  disabled={loadingApprove}
+                  className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold text-xs hover:bg-emerald-400 transition-colors disabled:opacity-50"
+                >
+                  {loadingApprove ? "Approving..." : "Approve"}
+                </button>
+                <button
+                  onClick={handleDeny}
+                  disabled={loadingDeny}
+                  className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-red-500/20 text-red-300 border border-red-500/30 font-semibold text-xs hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                >
+                  {loadingDeny ? "Denying..." : "Deny"}
+                </button>
+              </div>
+            </div>
           )}
         </div>
-      )}
-    </div>
+
+        {/* Modal Footer */}
+        <div className="border-t border-white/10 px-6 py-4 bg-[#0a0a0c]/80 flex items-center justify-between text-xs font-mono text-zinc-500">
+          <span>InfraCtrl Ephemeral Cloud Governance</span>
+          <button
+            onClick={onClose}
+            className="px-4 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white transition-all text-xs font-mono"
+          >
+            Close Inspector
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -330,6 +552,7 @@ export default function DashboardPage() {
   const [selectedEnv, setSelectedEnv] = useState("all");
   const [now, setNow] = useState(() => Date.now());
   const [showProvisionModal, setShowProvisionModal] = useState(false);
+  const [selectedResource, setSelectedResource] = useState(null);
 
   // Quick provision state
   const [provForm, setProvForm] = useState({ resource_type: "postgres", environment: "dev", instance_size: "small", allowed_ip: "" });
@@ -810,13 +1033,12 @@ export default function DashboardPage() {
         {/* Resources Table Container (Matching Base 44 exact styling) */}
         {tab === "resources" ? (
           <div className="rounded-2xl border border-white/10 bg-white/[0.025] overflow-hidden">
-            <div className="hidden sm:grid grid-cols-12 gap-4 px-5 py-3.5 border-b border-white/10 text-[11px] uppercase tracking-wider text-zinc-500 font-mono">
+            <div className="hidden sm:grid grid-cols-12 gap-4 px-6 py-3.5 border-b border-white/10 text-[11px] uppercase tracking-wider text-zinc-500 font-mono">
               <div className="col-span-4">Resource</div>
-              <div className="col-span-2">Type</div>
+              <div className="col-span-2">Engine & Spec</div>
               <div className="col-span-2">Status</div>
-              <div className="col-span-1 text-right">Monthly</div>
-              <div className="col-span-1 text-right">Live Spend</div>
-              <div className="col-span-2 text-right">Secrets / Lifecycle</div>
+              <div className="col-span-2 text-right">Cost / Spend</div>
+              <div className="col-span-2 text-right">Actions</div>
             </div>
 
             {filteredRequests.length === 0 ? (
@@ -843,31 +1065,37 @@ export default function DashboardPage() {
                   const effStatus = getEffectiveStatus(r);
                   const s = statusMeta[effStatus] || statusMeta.ready;
                   const name = r.name || `${r.environment || 'dev'}-${r.resource_type || 'db'}-${(r.id || '').substring(0, 4)}`;
-                  const isOwner = session?.user?.email && session.user.email === r.requester_email;
-                  const canExtend = !["deleted", "failed"].includes((r.status || "").toLowerCase()) && isOwner;
 
                   return (
                     <div
                       key={r.id}
-                      className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 px-5 py-4 items-center hover:bg-white/[0.02] transition-colors"
+                      onClick={() => setSelectedResource(r)}
+                      className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 px-6 py-4 items-center hover:bg-white/[0.03] transition-all cursor-pointer group"
                     >
                       {/* Resource Column */}
-                      <div className="sm:col-span-4 flex items-center gap-3 min-w-0">
-                        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg border ${t.ring} ${t.color}`}>
+                      <div className="sm:col-span-4 flex items-center gap-3.5 min-w-0">
+                        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border ${t.ring} ${t.color} shadow-sm group-hover:scale-105 transition-transform`}>
                           <TypeIcon className="w-4 h-4" />
                         </span>
                         <div className="min-w-0">
-                          <div className="text-sm font-medium text-white font-mono truncate">{name}</div>
-                          <div className="text-[11px] text-zinc-500 font-mono">
-                            {r.instance_size || "small"} · {r.environment || "dev"} · {r.requester_email}
+                          <div className="text-sm font-semibold text-white font-mono truncate group-hover:text-cyan-300 transition-colors">
+                            {name}
+                          </div>
+                          <div className="text-[11px] text-zinc-400 font-mono truncate">
+                            {r.environment || "dev"} · {r.requester_email}
                           </div>
                         </div>
                       </div>
 
-                      {/* Type Column */}
-                      <div className="sm:col-span-2 flex items-center gap-2 text-sm text-zinc-300 font-mono">
-                        <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />
-                        <span>{t.label}</span>
+                      {/* Engine & Spec Column */}
+                      <div className="sm:col-span-2 flex flex-col justify-center font-mono">
+                        <div className="flex items-center gap-1.5 text-xs text-zinc-200">
+                          <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />
+                          <span>{t.label}</span>
+                        </div>
+                        <div className="text-[11px] text-zinc-500 truncate">
+                          {r.instance_size || "small"} ({SPECS[r.instance_size || "small"]?.cpu || "1 vCPU"})
+                        </div>
                       </div>
 
                       {/* Status Column */}
@@ -878,33 +1106,37 @@ export default function DashboardPage() {
                         </span>
                       </div>
 
-                      {/* Monthly Cost */}
-                      <div className="sm:col-span-1 sm:text-right text-sm font-medium text-emerald-300 font-mono">
-                        {fmt(getMonthlyCost(r))}
+                      {/* Cost / Spend Column */}
+                      <div className="sm:col-span-2 sm:text-right font-mono">
+                        <div className="text-xs font-semibold text-emerald-300">
+                          {fmt(getMonthlyCost(r))} <span className="text-[10px] text-zinc-500 font-normal">/mo</span>
+                        </div>
+                        <div className="text-[11px] text-cyan-300/80 tabular-nums">
+                          {fmt(liveSpend(r, now), 4)}
+                        </div>
                       </div>
 
-                      {/* Live Spend */}
-                      <div className="sm:col-span-1 sm:text-right font-mono text-[13px] text-cyan-200 tabular-nums">
-                        {fmt(liveSpend(r, now), 4)}
-                      </div>
-
-                      {/* Connection String & Actions */}
+                      {/* Actions Column */}
                       <div className="sm:col-span-2 flex items-center justify-end gap-2">
-                        <ConnectionCell req={r} session={session} />
-                        {canExtend && (
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            transition={springTransition}
-                            onClick={() => handleExtend(r.id)}
-                            disabled={extendingId === r.id}
-                            className="px-2 py-1 rounded-lg text-xs font-mono font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors inline-flex items-center gap-1"
-                            title="Extend lifecycle by 7 days"
+                        {r.connection_string && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1 rounded-lg bg-white/5 border border-white/10 hover:border-white/20 text-zinc-400 hover:text-white transition-colors"
+                            title="Quick Copy Connection URI"
                           >
-                            {extendingId === r.id ? <Clock size={11} className="animate-spin" /> : <CalendarPlus size={11} />}
-                            <span>+7d</span>
-                          </motion.button>
+                            <CopyButton text={r.connection_string} />
+                          </div>
                         )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedResource(r);
+                          }}
+                          className="px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-white/[0.04] border border-white/10 group-hover:border-cyan-400/40 group-hover:bg-cyan-400/10 text-zinc-300 group-hover:text-white transition-all flex items-center gap-1.5 shadow-sm"
+                        >
+                          <span>Inspect</span>
+                          <ChevronRight size={12} className="text-zinc-500 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-all" />
+                        </button>
                       </div>
                     </div>
                   );
@@ -1333,6 +1565,18 @@ export default function DashboardPage() {
               )}
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Resource Details Pop-up Modal */}
+      <AnimatePresence>
+        {selectedResource && (
+          <ResourceDetailsModal
+            req={selectedResource}
+            session={session}
+            onClose={() => setSelectedResource(null)}
+            onRefresh={() => fetchRequests(true)}
+          />
         )}
       </AnimatePresence>
     </div>
