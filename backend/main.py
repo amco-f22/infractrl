@@ -368,6 +368,46 @@ async def get_user_budget(email: str):
         conn.close()
 
 # ---------------------------------------------------------------
+# Feature: Policy Preview
+# ---------------------------------------------------------------
+@app.post("/api/policies/preview")
+async def preview_policy(preview_data: PolicyPreviewRequest):
+    """
+    Evaluates a proposed request against the policy engine without creating it.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        cur.execute("""
+            SELECT resource_type, instance_size FROM requests
+            WHERE requester_email = %s AND status IN ('ready', 'provisioning')
+              AND expiry_date > CURRENT_DATE
+        """, (preview_data.requester_email,))
+        active = cur.fetchall()
+        current_spend = sum(estimate_cost(r["resource_type"], r["instance_size"]) for r in active)
+        new_cost = estimate_cost(preview_data.resource_type, preview_data.instance_size)
+        user_budget_remaining = BUDGET_LIMIT_PER_USER - current_spend
+        
+        req_ctx = RequestContext(
+            resource_type=preview_data.resource_type,
+            environment=preview_data.environment,
+            instance_size=preview_data.instance_size,
+            estimated_cost=new_cost
+        )
+        decision, reason = evaluate_request(req_ctx, user_budget_remaining)
+        
+        return {
+            "decision": decision.value,
+            "reason": reason
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+# ---------------------------------------------------------------
 # Core: Create Request (with audit log + budget warning)
 # ---------------------------------------------------------------
 @app.post("/api/requests", status_code=status.HTTP_201_CREATED)

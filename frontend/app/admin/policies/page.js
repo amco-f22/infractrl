@@ -72,7 +72,12 @@ export default function PolicyAdmin() {
       });
       if (res.ok) {
         const data = await res.json();
-        setPolicies(data);
+        if (Array.isArray(data)) {
+          setPolicies(data);
+        } else {
+          console.error("API did not return an array", data);
+          setPolicies([]);
+        }
       }
     } catch (e) {
       console.error(e);
