@@ -1281,6 +1281,8 @@ async def update_request_ip(request_id: str, ip_data: UpdateIpRequest):
         req = cur.fetchone()
         if not req:
             raise HTTPException(status_code=404, detail="Request not found")
+        if req["status"] not in ["ready"]:
+            raise HTTPException(status_code=400, detail="Cannot update IP for a resource that is not active (ready).")
             
         cur.execute("UPDATE requests SET allowed_ip = %s WHERE id = %s", (ip_data.new_allowed_ip, request_id))
         

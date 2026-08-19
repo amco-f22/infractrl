@@ -100,6 +100,12 @@ jobs:
             -var="requester_email=${{ inputs.requester_email }}" \
             -var="environment=${{ inputs.environment }}"
             
+      - name: Delete State File
+        if: success()
+        run: |
+          echo "Cleaning up state file from S3 to prevent ghost reprovisioning..."
+          aws s3 rm "s3://infractl-terraform-state/state/${{ inputs.request_id }}.tfstate"
+            
       - name: Mark as Deleted in DB
         if: success()
         env:
