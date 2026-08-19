@@ -17,7 +17,7 @@ export async function DELETE(request, { params }) {
   return proxyRequest(request, params, "DELETE");
 }
 
-async function proxyRequest(request, params, method) {
+async function proxyRequest(request, paramsPromise, method) {
   // 1. Verify NextAuth Session
   const session = await auth();
   if (!session?.user?.email) {
@@ -25,6 +25,7 @@ async function proxyRequest(request, params, method) {
   }
 
   // 2. Construct Backend URL
+  const params = await paramsPromise;
   const path = params.path.join("/");
   const backendUrl = process.env.BACKEND_API_URL || "http://localhost:8000";
   const url = new URL(`${backendUrl}/api/${path}`);
