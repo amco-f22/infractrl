@@ -1207,7 +1207,7 @@ async def list_requests():
                 "status": req["status"],
                 "created_at": req["created_at"].isoformat() if req["created_at"] else None,
                 "expiry_date": str(req["expiry_date"]) if req["expiry_date"] else None,
-                "connection_string": mask_connection_string(req["connection_string"]),
+                "connection_string": req["connection_string"],
                 "allowed_ip": req["allowed_ip"]
             })
             
