@@ -202,7 +202,7 @@ jobs:
       - name: Get Terraform Outputs and Update Status
         working-directory: ./terraform
         env:
-          API_URL: ${{ secrets.BACKEND_URL }}
+          API_URL: ${{ secrets.PROD_API_URL }}
         run: |
           export TF_OUT_CONNECTION_STRING=$(terraform output -raw connection_string)
           export TF_OUT_AWS_RESOURCE_ID=$(terraform output -raw aws_resource_id)
@@ -223,7 +223,7 @@ jobs:
       - name: Update Status to Failed (on error)
         if: failure()
         env:
-          API_URL: ${{ secrets.BACKEND_URL }}
+          API_URL: ${{ secrets.PROD_API_URL }}
           FAILED: "true"
         run: python .github/scripts/update_status.py
 
