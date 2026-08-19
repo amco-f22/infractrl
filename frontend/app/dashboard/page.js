@@ -231,9 +231,10 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
   };
 
   const [loadingDestroy, setLoadingDestroy] = useState(false);
+  const [confirmDestroy, setConfirmDestroy] = useState(false);
+  const [destroyInput, setDestroyInput] = useState("");
+
   const handleDestroy = async () => {
-    if (!window.confirm("Are you sure you want to permanently destroy this resource? This cannot be undone.")) return;
-    
     setLoadingDestroy(true);
     const toastId = toast.loading("Initiating destroy sequence...");
     try {
@@ -495,8 +496,8 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
               {isOwner && (
                 <button
                   onClick={handleUpdateIp}
-                  disabled={loadingIp}
-                  className="px-3.5 py-2 rounded-xl text-xs font-mono font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all flex items-center gap-2 disabled:opacity-50 shadow-sm"
+                  disabled={loadingIp || req.status === 'deleted' || req.status === 'failed'}
+                  className="px-3.5 py-2 rounded-xl text-xs font-mono font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all flex items-center gap-2 disabled:opacity-50 disabled:hover:bg-cyan-500/10 shadow-sm"
                 >
                   {loadingIp ? <div className="w-3 h-3 border border-cyan-300 border-t-transparent rounded-full animate-spin" /> : <RefreshCw size={13} />}
                   <span>Update to Current IP</span>
@@ -569,17 +570,50 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
           {/* Active Resource Controls (Danger Zone) */}
           {["ready", "failed"].includes((req.status || "").toLowerCase()) && isOwner && (
             <div className="p-5 rounded-2xl bg-red-500/[0.04] border border-red-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div>
-                <h4 className="text-sm font-semibold text-red-400 font-mono">Danger Zone</h4>
-                <p className="text-xs text-red-400/70 mt-0.5">Permanently destroy this resource and its data.</p>
-              </div>
-              <button
-                onClick={handleDestroy}
-                disabled={loadingDestroy}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-500/20 text-red-300 border border-red-500/30 font-semibold text-xs hover:bg-red-500/30 transition-all disabled:opacity-50 font-mono shadow-sm"
-              >
-                {loadingDestroy ? "Initiating Destroy..." : "Destroy Resource"}
-              </button>
+              {!confirmDestroy ? (
+                <>
+                  <div>
+                    <h4 className="text-sm font-semibold text-red-400 font-mono">Danger Zone</h4>
+                    <p className="text-xs text-red-400/70 mt-0.5">Permanently destroy this resource and its data.</p>
+                  </div>
+                  <button
+                    onClick={() => setConfirmDestroy(true)}
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-500/20 text-red-300 border border-red-500/30 font-semibold text-xs hover:bg-red-500/30 transition-all font-mono shadow-sm"
+                  >
+                    Destroy Resource
+                  </button>
+                </>
+              ) : (
+                <div className="w-full flex flex-col gap-3">
+                  <div>
+                    <h4 className="text-sm font-semibold text-red-400 font-mono">Confirm Destruction</h4>
+                    <p className="text-xs text-red-400/70 mt-0.5">Type <strong className="text-red-300 font-bold">delete me</strong> below to confirm.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="delete me"
+                      value={destroyInput}
+                      onChange={(e) => setDestroyInput(e.target.value)}
+                      className="flex-1 bg-black/40 border border-red-500/30 rounded-xl px-3 py-2 text-sm text-red-100 placeholder:text-red-500/50 outline-none focus:border-red-500/60 font-mono"
+                    />
+                    <button
+                      onClick={handleDestroy}
+                      disabled={loadingDestroy || destroyInput !== "delete me"}
+                      className="px-4 py-2 rounded-xl bg-red-500 text-white font-semibold text-xs hover:bg-red-600 transition-all disabled:opacity-50 font-mono shadow-sm"
+                    >
+                      {loadingDestroy ? "..." : "Confirm"}
+                    </button>
+                    <button
+                      onClick={() => { setConfirmDestroy(false); setDestroyInput(""); }}
+                      disabled={loadingDestroy}
+                      className="px-4 py-2 rounded-xl bg-transparent text-red-400 border border-red-500/30 font-semibold text-xs hover:bg-red-500/10 transition-all font-mono shadow-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
