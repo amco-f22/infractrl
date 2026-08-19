@@ -28,7 +28,10 @@ async function proxyRequest(request, paramsPromise, method) {
   const params = await paramsPromise;
   const path = params.path.join("/");
   const backendUrl = process.env.BACKEND_API_URL || "http://localhost:8000";
-  const url = new URL(`${backendUrl}/api/${path}`);
+  
+  // Clean up the path construction since frontend calls can vary between `/api/backend/api/...` and `/api/backend/admin/...`
+  const sanitizedPath = path.startsWith("api/") ? path.substring(4) : path;
+  const url = new URL(`${backendUrl}/api/${sanitizedPath}`);
   url.search = request.nextUrl.search; // Forward query params (e.g. ?limit=40)
 
   // 3. Inject Security Headers
