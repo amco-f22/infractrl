@@ -353,7 +353,7 @@ export default function DashboardPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               environment: provForm.environment,
-              size: provForm.instance_size,
+              instance_size: provForm.instance_size,
               resource_type: provForm.resource_type,
               estimated_cost: cost,
               requester_email: session.user.email

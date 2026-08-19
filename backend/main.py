@@ -1126,7 +1126,9 @@ async def get_policies(_: str = Depends(is_admin)):
             "name": "Auto-Approve Dev Resources",
             "description": "Automatically approve small dev resources",
             "priority": 10,
-            "action_type": "auto_approved",
+            "actions": [
+                {"action_type": "auto_approved", "reason_template": "Fast lane approved"}
+            ],
             "conditions": [
                 {"field": "environment", "operator": "eq", "value": "dev"},
                 {"field": "instance_size", "operator": "eq", "value": "small"}
@@ -1137,7 +1139,9 @@ async def get_policies(_: str = Depends(is_admin)):
             "name": "Cost Ceiling",
             "description": "Deny anything over $100",
             "priority": 1,
-            "action_type": "auto_denied",
+            "actions": [
+                {"action_type": "auto_denied", "reason_template": "Exceeds $100 cost limit"}
+            ],
             "conditions": [
                 {"field": "estimated_cost", "operator": "gt", "value": "100"}
             ]
