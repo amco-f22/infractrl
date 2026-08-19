@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from dotenv import load_dotenv
 
-from policy_engine import evaluate_request, RequestContext, ApprovalDecision
+from policy_engine_v2 import PolicyEngine, PolicyAction
 
 # Load environment variables
 load_dotenv()
@@ -395,16 +395,21 @@ async def preview_policy(preview_data: PolicyPreviewRequest):
         new_cost = estimate_cost(preview_data.resource_type, preview_data.instance_size)
         user_budget_remaining = BUDGET_LIMIT_PER_USER - current_spend
         
-        req_ctx = RequestContext(
-            resource_type=preview_data.resource_type,
-            environment=preview_data.environment,
-            instance_size=preview_data.instance_size,
-            estimated_cost=new_cost
-        )
-        decision, reason = evaluate_request(req_ctx, user_budget_remaining)
+        if new_cost > user_budget_remaining:
+            decision_value = PolicyAction.AUTO_DENIED.value
+            reason = f"Request exceeds remaining monthly budget of ${user_budget_remaining:.2f}"
+        else:
+            engine = PolicyEngine(conn)
+            decision, reason, _ = engine.evaluate_request({
+                "resource_type": preview_data.resource_type,
+                "environment": preview_data.environment,
+                "instance_size": preview_data.instance_size,
+                "estimated_cost": new_cost
+            })
+            decision_value = decision.value
         
         return {
-            "decision": decision.value,
+            "decision": decision_value,
             "reason": reason
         }
     except Exception as e:
@@ -442,18 +447,22 @@ async def create_request(request_data: CreateRequest, background_tasks: Backgrou
         user_budget_remaining = BUDGET_LIMIT_PER_USER - current_spend
         
         # Policy Engine Evaluation
-        req_ctx = RequestContext(
-            resource_type=request_data.resource_type,
-            environment=request_data.environment,
-            instance_size=request_data.instance_size,
-            estimated_cost=new_cost
-        )
-        decision, reason = evaluate_request(req_ctx, user_budget_remaining)
+        if new_cost > user_budget_remaining:
+            decision_value = PolicyAction.AUTO_DENIED.value
+            reason = f"Request exceeds remaining monthly budget of ${user_budget_remaining:.2f}"
+        else:
+            engine = PolicyEngine(conn)
+            decision, reason, _ = engine.evaluate_request({
+                "resource_type": request_data.resource_type,
+                "environment": request_data.environment,
+                "instance_size": request_data.instance_size,
+                "estimated_cost": new_cost
+            })
         
-        if decision == ApprovalDecision.AUTO_DENIED:
+        if decision == PolicyAction.AUTO_DENIED:
             raise HTTPException(status_code=400, detail=reason)
             
-        initial_status = "provisioning" if decision == ApprovalDecision.AUTO_APPROVED else "pending_approval"
+        initial_status = "provisioning" if decision == PolicyAction.AUTO_APPROVED else "pending_approval"
         
         # Insert the request
         query = """
@@ -487,7 +496,7 @@ async def create_request(request_data: CreateRequest, background_tasks: Backgrou
         conn.commit()
         
         # Actions based on decision
-        if decision == ApprovalDecision.AUTO_APPROVED:
+        if decision == PolicyAction.AUTO_APPROVED:
             # Try to trigger real GitHub Action
             async def trigger_or_simulate():
                 success = await trigger_github_workflow(
@@ -510,7 +519,7 @@ async def create_request(request_data: CreateRequest, background_tasks: Backgrou
         return {
             "id": req_id,
             "status": result["status"],
-            "message": "Request created! " + ("Provisioning workflow triggered." if decision == ApprovalDecision.AUTO_APPROVED else "Pending manual approval."),
+            "message": "Request created! " + ("Provisioning workflow triggered." if decision == PolicyAction.AUTO_APPROVED else "Pending manual approval."),
             "expiry_date": str(result["expiry_date"]),
             "estimated_cost": new_cost,
             "decision": decision.value,
@@ -1118,45 +1127,83 @@ async def update_request_ip(request_id: str, ip_data: UpdateIpRequest):
 # ---------------------------------------------------------------
 @app.get("/api/admin/policies")
 async def get_policies(_: str = Depends(is_admin)):
-    # Currently policies are hardcoded in policy_engine.py
-    # Returning a mock format that the frontend expects
-    return [
-        {
-            "id": "policy-1",
-            "name": "Auto-Approve Dev Resources",
-            "description": "Automatically approve small dev resources",
-            "priority": 10,
-            "actions": [
-                {"action_type": "auto_approved", "reason_template": "Fast lane approved"}
-            ],
-            "conditions": [
-                {"field": "environment", "operator": "eq", "value": "dev"},
-                {"field": "instance_size", "operator": "eq", "value": "small"}
-            ]
-        },
-        {
-            "id": "policy-2",
-            "name": "Cost Ceiling",
-            "description": "Deny anything over $100",
-            "priority": 1,
-            "actions": [
-                {"action_type": "auto_denied", "reason_template": "Exceeds $100 cost limit"}
-            ],
-            "conditions": [
-                {"field": "estimated_cost", "operator": "gt", "value": "100"}
-            ]
-        }
-    ]
+    conn = get_db_connection()
+    try:
+        engine = PolicyEngine(conn)
+        return engine.get_active_policies()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
 
 @app.post("/api/admin/policies")
 async def create_policy(policy_data: dict, _: str = Depends(is_admin)):
-    # Mock endpoint
-    return {"message": "Policy created successfully", "id": "policy-new"}
+    conn = get_db_connection()
+    conn.autocommit = False
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """INSERT INTO policies (name, description, priority, is_active, created_by)
+               VALUES (%s, %s, %s, %s, %s) RETURNING id""",
+            (
+                policy_data.get("name"),
+                policy_data.get("description"),
+                policy_data.get("priority", 0),
+                True,
+                "admin"
+            )
+        )
+        policy_id = cur.fetchone()[0]
+        
+        conditions = policy_data.get("conditions", [])
+        for cond in conditions:
+            cur.execute(
+                """INSERT INTO policy_conditions (policy_id, field, operator, value, logic_gate)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (
+                    policy_id,
+                    cond.get("field"),
+                    cond.get("operator"),
+                    str(cond.get("value")),
+                    cond.get("logic_gate", "AND")
+                )
+            )
+            
+        actions = policy_data.get("actions", [])
+        for act in actions:
+            cur.execute(
+                """INSERT INTO policy_actions (policy_id, action_type, reason_template)
+                   VALUES (%s, %s, %s)""",
+                (
+                    policy_id,
+                    act.get("action_type"),
+                    act.get("reason_template")
+                )
+            )
+            
+        conn.commit()
+        return {"message": "Policy created successfully", "id": policy_id}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
 
 @app.delete("/api/admin/policies/{policy_id}")
 async def delete_policy(policy_id: str, _: str = Depends(is_admin)):
-    # Mock endpoint
-    return {"message": "Policy deleted successfully"}
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM policies WHERE id = %s", (policy_id,))
+        conn.commit()
+        return {"message": "Policy deleted successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
 
 # ---------------------------------------------------------------
 # Feature: Live Provisioning Terminal Logs & Webhook
