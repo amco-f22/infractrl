@@ -38,6 +38,7 @@ export default function ProvisioningTerminal({ requestId, onComplete }) {
   const [error, setError] = useState(null);
   const terminalRef = useRef(null);
   const intervalRef = useRef(null);
+  const hasCompletedRef = useRef(false);
 
   const fetchLogs = useCallback(async () => {
     if (!session?.user?.email) return;
@@ -59,7 +60,10 @@ export default function ProvisioningTerminal({ requestId, onComplete }) {
       // Stop polling once terminal (success or failure)
       if (data.request_status === "ready" || data.request_status === "failed") {
         clearInterval(intervalRef.current);
-        onComplete?.(data.request_status);
+        if (!hasCompletedRef.current) {
+          hasCompletedRef.current = true;
+          onComplete?.(data.request_status);
+        }
       }
     } catch {
       // Network error — keep polling silently
