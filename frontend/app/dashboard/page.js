@@ -802,6 +802,10 @@ export default function DashboardPage() {
         }
         setProvStep("terminal"); // Switch modal to show ProvisioningTerminal
         fetchRequests();
+      } else if (res.status === 403) {
+        addLog(`[AUTH] ❌ ACCESS DENIED: ${apiData.detail || "You are not authorized to provision resources."}`);
+        addLog(`[SYSTEM] Aborting workflow.`);
+        toast.error(apiData.detail || "Not authorized to provision resources");
       } else {
         toast.error(`Backend failed: ${apiData.detail || "Unknown error"}`);
       }

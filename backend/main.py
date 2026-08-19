@@ -425,6 +425,17 @@ async def create_request(request_data: CreateRequest, background_tasks: Backgrou
     Triggers GitHub Actions workflow in background.
     Logs the action to audit_logs.
     """
+    # Authorization gate: restrict provisioning to allowed emails
+    authorized_raw = os.getenv("AUTHORIZED_EMAILS", "")
+    authorized_emails = [e.strip().lower() for e in authorized_raw.split(",") if e.strip()]
+    if authorized_emails:
+        requester = request_data.requester_email.strip().lower()
+        if requester not in authorized_emails:
+            raise HTTPException(
+                status_code=403,
+                detail="You are not authorized to provision resources. Contact the platform admin."
+            )
+
     conn = get_db_connection()
     cur = conn.cursor()
     
