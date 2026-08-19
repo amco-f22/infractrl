@@ -308,21 +308,25 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-xl"
+      transition={{ duration: 0.15, ease: "easeOut" }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-xl"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.95, opacity: 0, y: 15 }}
+        initial={{ scale: 0.96, opacity: 0, y: 12 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.95, opacity: 0, y: 10 }}
-        transition={springTransition}
+        exit={{ scale: 0.97, opacity: 0, y: 8 }}
+        transition={{ type: "spring", stiffness: 480, damping: 32, mass: 0.65 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative max-w-2xl w-full rounded-3xl border border-white/10 bg-[#0a0a0c] shadow-[0_0_80px_rgba(0,0,0,0.9)] flex flex-col max-h-[90vh] overflow-hidden ring-1 ring-white/10"
+        className="relative max-w-2xl w-full rounded-3xl border border-white/10 bg-[#08080a] shadow-[0_20px_70px_rgba(0,0,0,0.95)] flex flex-col max-h-[90vh] overflow-hidden ring-1 ring-white/10"
       >
+        {/* Ambient Top Glow Highlight Line */}
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent pointer-events-none z-20" />
+
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5 shrink-0 bg-[#0a0a0c]/90 backdrop-blur-md z-10">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5 shrink-0 bg-[#0c0d11]/90 backdrop-blur-md z-10">
           <div className="flex items-center gap-3.5 min-w-0">
-            <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl border ${t.ring} ${t.color} shadow-inner`}>
+            <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl border ${t.ring} ${t.color} shadow-[0_0_20px_rgba(34,211,238,0.1)]`}>
               <TypeIcon className="w-5 h-5" />
             </span>
             <div className="min-w-0">
@@ -332,18 +336,23 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
                   {s.pulse && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
                   {s.label}
                 </span>
-                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-zinc-400">
+                <span className="text-[10px] uppercase font-mono px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 font-semibold">
                   {req.environment || "dev"}
                 </span>
               </div>
-              <p className="text-xs text-zinc-500 font-mono truncate mt-0.5">
-                ID: {req.id} · Owner: {req.requester_email}
+              <p className="text-xs text-zinc-400 font-mono truncate mt-1 flex items-center gap-2">
+                <span className="text-zinc-500">ID:</span>
+                <span className="text-zinc-400 select-all">{req.id}</span>
+                <span className="text-zinc-600">·</span>
+                <span className="text-zinc-500">Owner:</span>
+                <span className="text-zinc-400">{req.requester_email}</span>
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-all hover:scale-105"
+            title="Close"
           >
             <X size={18} />
           </button>
@@ -353,7 +362,7 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
         <div className="overflow-y-auto px-6 py-6 space-y-6 flex-1 scrollbar-thin scrollbar-thumb-white/10">
           {/* Top 3 Telemetry Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-between">
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all flex flex-col justify-between shadow-sm">
               <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Monthly Run Rate</span>
               <div className="mt-2 text-xl font-bold font-mono text-emerald-300">
                 {fmt(getMonthlyCost(req))} <span className="text-xs text-zinc-500 font-normal">/mo</span>
@@ -361,10 +370,13 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
               <span className="text-[10px] text-zinc-500 font-mono mt-1 capitalize">{req.instance_size || "small"} tier spec</span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-between">
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all flex flex-col justify-between shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Live Accrued Spend</span>
-                <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-ping" />
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400"></span>
+                </span>
               </div>
               <div className="mt-2 text-xl font-bold font-mono text-cyan-200 tabular-nums">
                 {fmt(liveSpend(req, modalNow), 4)}
@@ -372,7 +384,7 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
               <span className="text-[10px] text-zinc-500 font-mono mt-1">Real-time meter</span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col justify-between">
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all flex flex-col justify-between shadow-sm">
               <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Lifecycle Expiry</span>
               <div className="mt-2 text-xs font-semibold font-mono text-amber-300 truncate">
                 {req.expiry_date ? `${req.expiry_date}` : "7 Days Default"}
@@ -381,7 +393,7 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
                 <button
                   onClick={handleExtend}
                   disabled={loadingExtend}
-                  className="mt-2 w-full py-1 px-2 rounded-lg text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all flex items-center justify-center gap-1.5"
+                  className="mt-2 w-full py-1.5 px-2 rounded-xl text-[11px] font-mono font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all flex items-center justify-center gap-1.5 shadow-sm"
                 >
                   {loadingExtend ? <Clock size={11} className="animate-spin" /> : <CalendarPlus size={11} />}
                   <span>+7d Extend</span>
@@ -393,11 +405,11 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
           </div>
 
           {/* Connection Credentials Card */}
-          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
+          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Shield size={14} className="text-cyan-400" />
-                <span className="text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold">
+                <span className="text-xs font-mono uppercase tracking-wider text-zinc-200 font-semibold">
                   Connection URI & Credentials
                 </span>
               </div>
@@ -407,9 +419,9 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
             </div>
 
             {req.connection_string ? (
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between gap-2 p-3 bg-black/60 border border-white/10 rounded-xl font-mono text-xs text-cyan-200">
-                  <span className="select-all break-all text-xs">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2 p-3.5 bg-black/70 border border-white/10 rounded-xl font-mono text-xs text-cyan-200 shadow-inner">
+                  <span className="select-all break-all text-xs font-mono">
                     {revealed && fullString ? fullString : req.connection_string}
                   </span>
                   <div className="flex items-center gap-1.5 shrink-0 ml-2">
@@ -438,21 +450,21 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
-                  <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                  <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
                     <span className="text-zinc-500 block text-[9px] uppercase">Engine</span>
-                    <span className="text-zinc-200">PostgreSQL 16</span>
+                    <span className="text-zinc-200 font-semibold">PostgreSQL 16</span>
                   </div>
-                  <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                  <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
                     <span className="text-zinc-500 block text-[9px] uppercase">Port</span>
-                    <span className="text-zinc-200">5432</span>
+                    <span className="text-zinc-200 font-semibold">5432</span>
                   </div>
-                  <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                  <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
                     <span className="text-zinc-500 block text-[9px] uppercase">Database</span>
-                    <span className="text-zinc-200">postgres</span>
+                    <span className="text-zinc-200 font-semibold">postgres</span>
                   </div>
-                  <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                  <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
                     <span className="text-zinc-500 block text-[9px] uppercase">Username</span>
-                    <span className="text-zinc-200">infraadmin</span>
+                    <span className="text-zinc-200 font-semibold">infraadmin</span>
                   </div>
                 </div>
               </div>
@@ -464,13 +476,13 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
           </div>
 
           {/* Network Security / Security Group */}
-          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
+          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold flex items-center gap-2">
+              <span className="text-xs font-mono uppercase tracking-wider text-zinc-200 font-semibold flex items-center gap-2">
                 <Shield size={14} className="text-emerald-400" />
                 Network Firewall & Security Group
               </span>
-              <span className="text-[10px] font-mono text-emerald-400/90 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-semibold">
                 IP Locked
               </span>
             </div>
@@ -485,7 +497,7 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
                 <button
                   onClick={handleUpdateIp}
                   disabled={loadingIp}
-                  className="px-3.5 py-2 rounded-xl text-xs font-mono font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="px-3.5 py-2 rounded-xl text-xs font-mono font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all flex items-center gap-2 disabled:opacity-50 shadow-sm"
                 >
                   {loadingIp ? <div className="w-3 h-3 border border-cyan-300 border-t-transparent rounded-full animate-spin" /> : <RefreshCw size={13} />}
                   <span>Update to Current IP</span>
@@ -495,46 +507,46 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
           </div>
 
           {/* Hardware & Cloud Infrastructure Specs */}
-          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
-            <span className="text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold block">
+          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3 shadow-sm">
+            <span className="text-xs font-mono uppercase tracking-wider text-zinc-200 font-semibold block">
               Provisioned Hardware Profile
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs font-mono">
               <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
                 <span className="text-[10px] text-zinc-500 uppercase block">Compute Core</span>
-                <span className="text-white">{spec.cpu}</span>
+                <span className="text-white font-semibold">{spec.cpu}</span>
               </div>
               <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
                 <span className="text-[10px] text-zinc-500 uppercase block">Memory</span>
-                <span className="text-white">{spec.ram}</span>
+                <span className="text-white font-semibold">{spec.ram}</span>
               </div>
               <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
                 <span className="text-[10px] text-zinc-500 uppercase block">Storage</span>
-                <span className="text-white">{spec.storage}</span>
+                <span className="text-white font-semibold">{spec.storage}</span>
               </div>
               <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
                 <span className="text-[10px] text-zinc-500 uppercase block">Region</span>
-                <span className="text-white">AWS us-east-1</span>
+                <span className="text-white font-semibold">AWS us-east-1</span>
               </div>
               <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
                 <span className="text-[10px] text-zinc-500 uppercase block">Created At</span>
-                <span className="text-white">{req.created_at ? new Date(req.created_at).toLocaleDateString() : "Just now"}</span>
+                <span className="text-white font-semibold">{req.created_at ? new Date(req.created_at).toLocaleDateString() : "Just now"}</span>
               </div>
               <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
                 <span className="text-[10px] text-zinc-500 uppercase block">Expiry Date</span>
-                <span className="text-white">{req.expiry_date || "7 Days"}</span>
+                <span className="text-white font-semibold">{req.expiry_date || "7 Days"}</span>
               </div>
             </div>
           </div>
 
           {/* Pending Approval Controls (if applicable) */}
           {(req.status || "").toLowerCase() === "pending_approval" && (
-            <div className="p-5 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="p-5 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_0_30px_rgba(168,85,247,0.1)]">
               <div>
                 <h4 className="text-sm font-semibold text-purple-200">Pending Governance Review</h4>
                 <p className="text-xs text-purple-300/70 mt-0.5">This request requires platform approval before AWS provisioning.</p>
               </div>
-              <div className="flex items-center justify-center p-3 rounded-xl bg-black/40 border border-purple-500/20 text-xs text-purple-200/80">
+              <div className="flex items-center justify-center p-3 rounded-xl bg-black/40 border border-purple-500/20 text-xs text-purple-200/80 font-mono">
                 <span className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-[#E01E5A]" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.835a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.835a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.835zM17.688 8.835a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.313zM15.165 18.958a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.52v-2.522h2.52zM15.165 17.687a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
@@ -547,22 +559,25 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
 
           {/* Terminal / Logs (if applicable) */}
           {["provisioning", "ready", "failed"].includes((req.status || "").toLowerCase()) && (
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
+              <span className="text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold block">
+                Provisioning Log Feed
+              </span>
               <ProvisioningTerminal requestId={req.id} />
             </div>
           )}
 
           {/* Active Resource Controls (Danger Zone) */}
           {["ready", "failed"].includes((req.status || "").toLowerCase()) && isOwner && (
-            <div className="p-5 rounded-2xl bg-red-500/5 border border-red-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="p-5 rounded-2xl bg-red-500/[0.04] border border-red-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
-                <h4 className="text-sm font-semibold text-red-400">Danger Zone</h4>
+                <h4 className="text-sm font-semibold text-red-400 font-mono">Danger Zone</h4>
                 <p className="text-xs text-red-400/70 mt-0.5">Permanently destroy this resource and its data.</p>
               </div>
               <button
                 onClick={handleDestroy}
                 disabled={loadingDestroy}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-500/20 text-red-300 border border-red-500/30 font-semibold text-xs hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-500/20 text-red-300 border border-red-500/30 font-semibold text-xs hover:bg-red-500/30 transition-all disabled:opacity-50 font-mono shadow-sm"
               >
                 {loadingDestroy ? "Initiating Destroy..." : "Destroy Resource"}
               </button>
@@ -571,8 +586,8 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
         </div>
 
         {/* Modal Footer */}
-        <div className="border-t border-white/10 px-6 py-4 bg-[#0a0a0c]/80 flex items-center justify-between text-xs font-mono text-zinc-500">
-          <span>InfraCtrl Ephemeral Cloud Governance</span>
+        <div className="border-t border-white/10 px-6 py-4 bg-[#0c0d11]/90 flex items-center justify-between text-xs font-mono text-zinc-500">
+          <span className="text-[11px]">InfraCtrl Ephemeral Cloud Governance</span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white transition-all text-xs font-mono"
@@ -1274,24 +1289,33 @@ export default function DashboardPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xl"
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-xl"
+            onClick={() => {
+              setShowProvisionModal(false);
+              setTimeout(() => setProvStep("form"), 300);
+            }}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              initial={{ scale: 0.96, opacity: 0, y: 12 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative max-w-2xl w-full rounded-3xl border border-white/10 bg-[#0a0a0c] shadow-[0_0_80px_rgba(0,0,0,0.8)] flex flex-col max-h-[90vh] overflow-hidden ring-1 ring-white/5"
+              exit={{ scale: 0.97, opacity: 0, y: 8 }}
+              transition={{ type: "spring", stiffness: 480, damping: 32, mass: 0.65 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-2xl w-full rounded-3xl border border-white/10 bg-[#08080a] shadow-[0_20px_70px_rgba(0,0,0,0.95)] flex flex-col max-h-[90vh] overflow-hidden ring-1 ring-white/10"
             >
+              {/* Ambient Top Glow Highlight Line */}
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent pointer-events-none z-20" />
+
               {/* Header (Sticky) */}
-              <div className="flex items-center justify-between border-b border-white/5 px-6 py-5 shrink-0 bg-[#0a0a0c]/80 backdrop-blur-md z-10">
-                <div className="flex items-center gap-3">
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-cyan-400/20 to-emerald-400/20 text-cyan-300 border border-cyan-400/20 shadow-inner">
+              <div className="flex items-center justify-between border-b border-white/10 px-6 py-5 shrink-0 bg-[#0c0d11]/90 backdrop-blur-md z-10">
+                <div className="flex items-center gap-3.5">
+                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
                     <Database className="w-5 h-5" />
                   </span>
                   <div>
-                    <h3 className="text-lg font-medium text-white tracking-tight">Provision Resource</h3>
-                    <p className="text-xs text-zinc-500">Automated Terraform deployment pipeline</p>
+                    <h3 className="text-lg font-semibold text-white tracking-tight font-mono">Provision Cloud Resource</h3>
+                    <p className="text-xs text-zinc-400 font-mono mt-0.5">Automated Zero-Trust Terraform Deployment</p>
                   </div>
                 </div>
                 <button
@@ -1299,7 +1323,8 @@ export default function DashboardPage() {
                     setShowProvisionModal(false);
                     setTimeout(() => setProvStep("form"), 300);
                   }}
-                  className="p-2 rounded-full hover:bg-white/5 text-zinc-500 hover:text-white transition-colors"
+                  className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-all hover:scale-105"
+                  title="Close"
                 >
                   <X size={18} />
                 </button>
@@ -1308,18 +1333,18 @@ export default function DashboardPage() {
               {provStep === "form" ? (
                 /* Form Body (Scrollable) */
                 <form onSubmit={handleQuickProvision} className="flex flex-col overflow-hidden h-full">
-                <div className="overflow-y-auto px-6 py-6 space-y-8 flex-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                <div className="overflow-y-auto px-6 py-6 space-y-7 flex-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                   
                   {/* 1. Engine Selection Boxes */}
                   <div>
-                    <label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500 block mb-3">
-                      Resource Engine
+                    <label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-400 block mb-3 font-mono">
+                      1. Cloud Resource Engine
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {[
                         { id: "postgres", label: "PostgreSQL 16", icon: Database, cost: "$15/mo", disabled: false },
                         { id: "redis", label: "Redis Cluster", icon: HardDrive, cost: "$10/mo", disabled: true },
-                        { id: "s3", label: "S3 Bucket", icon: Archive, cost: "$5/mo", disabled: true },
+                        { id: "s3", label: "S3 Object Store", icon: Archive, cost: "$5/mo", disabled: true },
                       ].map((eng) => {
                         const isSel = provForm.resource_type === eng.id;
                         const disabled = eng.disabled;
@@ -1331,13 +1356,13 @@ export default function DashboardPage() {
                             disabled={disabled}
                             whileHover={disabled ? {} : { y: -2 }}
                             whileTap={disabled ? {} : { scale: 0.98 }}
-                            transition={springTransition}
+                            transition={{ type: "spring", stiffness: 450, damping: 30 }}
                             onClick={() => { if (!disabled) setProvForm((p) => ({ ...p, resource_type: eng.id })) }}
                             className={`p-4 rounded-2xl border text-left transition-all duration-300 relative ${
                               disabled
                                 ? "border-white/5 bg-white/[0.01] text-zinc-600 cursor-not-allowed opacity-50"
                                 : isSel
-                                ? "border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_20px_rgba(34,211,238,0.1)]"
+                                ? "border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_25px_rgba(34,211,238,0.12)] ring-1 ring-cyan-500/30"
                                 : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20 hover:bg-white/[0.04]"
                             }`}
                           >
@@ -1345,19 +1370,19 @@ export default function DashboardPage() {
                               <motion.div
                                 layoutId="modalActiveEngineRing"
                                 className="absolute inset-0 rounded-2xl border border-cyan-400/50 pointer-events-none"
-                                transition={springTransition}
+                                transition={{ type: "spring", stiffness: 450, damping: 30 }}
                               />
                             )}
                             <div className="flex justify-between items-start mb-3">
-                              <Ic size={18} className={disabled ? "text-zinc-600" : isSel ? "text-cyan-400" : "text-zinc-500"} />
+                              <Ic size={20} className={disabled ? "text-zinc-600" : isSel ? "text-cyan-400" : "text-zinc-400"} />
                               {disabled && (
-                                <span className="text-[9px] uppercase tracking-wider font-semibold text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+                                <span className="text-[9px] uppercase tracking-wider font-semibold text-zinc-500 bg-white/5 px-2 py-0.5 rounded-full border border-white/5 font-mono">
                                   Soon
                                 </span>
                               )}
                             </div>
-                            <p className={`text-sm font-medium ${disabled ? "text-zinc-600" : isSel ? "text-white" : "text-zinc-300"}`}>{eng.label}</p>
-                            <p className={`text-xs mt-0.5 ${disabled ? "text-zinc-700" : "text-zinc-500"}`}>{eng.cost}</p>
+                            <p className={`text-sm font-semibold font-mono ${disabled ? "text-zinc-600" : isSel ? "text-white" : "text-zinc-200"}`}>{eng.label}</p>
+                            <p className={`text-xs mt-0.5 font-mono ${disabled ? "text-zinc-700" : "text-zinc-500"}`}>{eng.cost}</p>
                           </motion.button>
                         );
                       })}
@@ -1366,29 +1391,33 @@ export default function DashboardPage() {
 
                   {/* 2. Environment Boxes */}
                   <div>
-                    <label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500 block mb-3">
-                      Target Environment
+                    <label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-400 block mb-3 font-mono">
+                      2. Target Environment
                     </label>
-                    <div className="flex p-1 rounded-xl bg-white/[0.02] border border-white/5 relative w-full sm:w-fit">
-                      {["dev", "staging", "prod"].map((env) => {
-                        const isSel = provForm.environment === env;
+                    <div className="flex p-1.5 rounded-2xl bg-black/60 border border-white/10 relative w-full sm:w-fit shadow-inner">
+                      {[
+                        { id: "dev", label: "dev", color: "text-emerald-400" },
+                        { id: "staging", label: "staging", color: "text-amber-400" },
+                        { id: "prod", label: "prod", color: "text-purple-400" }
+                      ].map((env) => {
+                        const isSel = provForm.environment === env.id;
                         return (
                           <button
-                            key={env}
+                            key={env.id}
                             type="button"
-                            onClick={() => setProvForm((p) => ({ ...p, environment: env }))}
-                            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors relative z-10 ${
-                              isSel ? "text-white" : "text-zinc-500 hover:text-zinc-300"
+                            onClick={() => setProvForm((p) => ({ ...p, environment: env.id }))}
+                            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-xs font-semibold uppercase font-mono tracking-wider transition-all relative z-10 ${
+                              isSel ? "text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300"
                             }`}
                           >
                             {isSel && (
                               <motion.div
                                 layoutId="modalActiveEnvPill"
-                                className="absolute inset-0 bg-white/10 rounded-lg shadow-sm border border-white/10 -z-10"
-                                transition={springTransition}
+                                className="absolute inset-0 bg-white/10 rounded-xl shadow-md border border-white/15 -z-10"
+                                transition={{ type: "spring", stiffness: 450, damping: 30 }}
                               />
                             )}
-                            <span>{env}</span>
+                            <span className={isSel ? env.color : ""}>{env.label}</span>
                           </button>
                         );
                       })}
@@ -1397,8 +1426,8 @@ export default function DashboardPage() {
 
                   {/* 3. Compute Allocation Boxes */}
                   <div>
-                    <label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500 block mb-3">
-                      Compute Profile
+                    <label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-400 block mb-3 font-mono">
+                      3. Compute Profile Tier
                     </label>
                     <div className="grid grid-cols-3 gap-3">
                       {["small", "medium", "large"].map((sz) => {
@@ -1409,11 +1438,11 @@ export default function DashboardPage() {
                             type="button"
                             whileHover={{ y: -2 }}
                             whileTap={{ scale: 0.98 }}
-                            transition={springTransition}
+                            transition={{ type: "spring", stiffness: 450, damping: 30 }}
                             onClick={() => setProvForm((p) => ({ ...p, instance_size: sz }))}
                             className={`p-3.5 rounded-2xl border text-center transition-all duration-300 relative ${
                               isSel
-                                ? "border-emerald-500/40 bg-emerald-500/10 shadow-[0_0_20px_rgba(52,211,153,0.1)]"
+                                ? "border-emerald-500/40 bg-emerald-500/10 shadow-[0_0_20px_rgba(52,211,153,0.12)] ring-1 ring-emerald-500/30"
                                 : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20 hover:bg-white/[0.04]"
                             }`}
                           >
@@ -1421,11 +1450,11 @@ export default function DashboardPage() {
                               <motion.div
                                 layoutId="modalActiveSizeRing"
                                 className="absolute inset-0 rounded-2xl border border-emerald-400/50 pointer-events-none"
-                                transition={springTransition}
+                                transition={{ type: "spring", stiffness: 450, damping: 30 }}
                               />
                             )}
-                            <p className={`text-sm font-medium capitalize ${isSel ? "text-emerald-300" : "text-zinc-300"}`}>{sz}</p>
-                            <p className="text-xs text-zinc-500 mt-0.5">{SPECS[sz].cpu} • {SPECS[sz].ram}</p>
+                            <p className={`text-sm font-semibold capitalize font-mono ${isSel ? "text-emerald-300" : "text-zinc-200"}`}>{sz}</p>
+                            <p className="text-[11px] text-zinc-500 mt-1 font-mono">{SPECS[sz].cpu} · {SPECS[sz].ram}</p>
                           </motion.button>
                         );
                       })}
@@ -1435,8 +1464,8 @@ export default function DashboardPage() {
                   {/* 4. Security / Network Access Box */}
                   {provForm.resource_type === "postgres" && (
                     <div>
-                      <label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500 block mb-3">
-                        Network Access (Zero Trust)
+                      <label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-400 block mb-3 font-mono">
+                        4. Network Firewall (Zero Trust)
                       </label>
                       <div className="flex gap-3">
                         <input
@@ -1444,20 +1473,20 @@ export default function DashboardPage() {
                           value={provForm.allowed_ip}
                           onChange={(e) => setProvForm({ ...provForm, allowed_ip: e.target.value })}
                           placeholder="Your Public IP (e.g., 203.0.113.5)"
-                          className="flex-1 rounded-xl bg-black/50 border border-white/10 px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all font-mono"
+                          className="flex-1 rounded-2xl bg-black/60 border border-white/10 px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all font-mono shadow-inner"
                           required
                         />
                         <button
                           type="button"
                           onClick={detectIp}
-                          className="px-5 py-3 rounded-xl bg-white/[0.03] border border-white/10 text-xs font-semibold text-zinc-300 hover:bg-white/[0.08] hover:text-white transition-all shadow-sm whitespace-nowrap"
+                          className="px-5 py-3 rounded-2xl bg-white/[0.04] border border-white/10 text-xs font-mono font-semibold text-zinc-300 hover:bg-white/[0.08] hover:text-white transition-all shadow-sm whitespace-nowrap"
                         >
                           Detect IP
                         </button>
                       </div>
-                      <div className="mt-2.5 flex items-center gap-1.5 text-xs text-zinc-500">
-                        <Shield size={12} className="text-zinc-400" />
-                        <span>Database will be firewalled to this specific IP address.</span>
+                      <div className="mt-2.5 flex items-center gap-1.5 text-xs text-zinc-500 font-mono">
+                        <Shield size={13} className="text-emerald-400" />
+                        <span>Database security group will be firewalled to this specific IP.</span>
                       </div>
                     </div>
                   )}
@@ -1469,64 +1498,64 @@ export default function DashboardPage() {
                     const matchedPolicies = policyPreview.matched_policies?.map(p => p.policy_name).join(', ');
                     
                     return (
-                      <div className={`p-4 rounded-2xl border flex gap-3.5 items-start transition-all duration-300 ${
-                        pStatus === "auto_approved" ? "border-emerald-500/20 bg-emerald-500/[0.03] text-emerald-400" :
-                        pStatus === "pending_approval" ? "border-amber-500/20 bg-amber-500/[0.03] text-amber-400" :
-                        "border-red-500/20 bg-red-500/[0.03] text-red-400"
+                      <div className={`p-4.5 rounded-2xl border flex gap-3.5 items-start transition-all duration-300 ${
+                        pStatus === "auto_approved" ? "border-emerald-500/20 bg-emerald-500/[0.04] text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.05)]" :
+                        pStatus === "pending_approval" ? "border-purple-500/20 bg-purple-500/[0.04] text-purple-300 shadow-[0_0_20px_rgba(168,85,247,0.05)]" :
+                        "border-red-500/20 bg-red-500/[0.04] text-red-400"
                       }`}>
                         <div className="mt-0.5">
-                          {pStatus === "auto_approved" ? <Zap size={18} /> :
-                           pStatus === "pending_approval" ? <Clock size={18} /> :
-                           <AlertCircle size={18} />}
+                          {pStatus === "auto_approved" ? <Zap size={18} className="text-emerald-400" /> :
+                           pStatus === "pending_approval" ? <Clock size={18} className="text-purple-400" /> :
+                           <AlertCircle size={18} className="text-red-400" />}
                         </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm font-medium tracking-tight mb-1">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold tracking-tight mb-1 font-mono">
                             {pStatus === "auto_approved" ? "Auto-Approve Eligible" : 
-                             pStatus === "pending_approval" ? "Manual Approval Required" : 
+                             pStatus === "pending_approval" ? "Governance Review Required" : 
                              "Request Denied by Policy"}
                           </h4>
-                          <p className={`text-xs leading-relaxed ${
-                            pStatus === "auto_approved" ? "text-emerald-400/70" :
-                            pStatus === "pending_approval" ? "text-amber-400/70" :
-                            "text-red-400/70"
+                          <p className={`text-xs leading-relaxed font-mono ${
+                            pStatus === "auto_approved" ? "text-emerald-400/80" :
+                            pStatus === "pending_approval" ? "text-purple-300/80" :
+                            "text-red-400/80"
                           }`}>
                             {pMsg}
                           </p>
                           {matchedPolicies && (
-                            <p className="text-[10px] uppercase tracking-wider font-mono opacity-50 mt-2">
-                              Matched: {matchedPolicies}
+                            <p className="text-[10px] uppercase tracking-wider font-mono opacity-60 mt-2">
+                              Policy: {matchedPolicies}
                             </p>
                           )}
                         </div>
                       </div>
                     );
                   })() : (
-                    <div className="p-4 rounded-2xl border border-white/5 flex gap-3.5 items-center">
+                    <div className="p-4 rounded-2xl border border-white/5 flex gap-3.5 items-center bg-black/40">
                        <div className="w-4 h-4 rounded-full border-2 border-zinc-500 border-t-transparent animate-spin" />
-                       <span className="text-xs text-zinc-500">Evaluating policies...</span>
+                       <span className="text-xs text-zinc-500 font-mono">Evaluating policy engine...</span>
                     </div>
                   )}
 
                 </div>
 
                 {/* Footer (Sticky) */}
-                <div className="p-6 pt-5 border-t border-white/5 bg-[#0a0a0c] shrink-0 z-10 flex flex-col gap-4">
+                <div className="p-6 pt-5 border-t border-white/10 bg-[#0c0d11]/90 backdrop-blur-md shrink-0 z-10 flex flex-col gap-4">
                   {/* Dynamic Spec & Cost Breakdown Strip */}
-                  <div className="flex items-center justify-between px-2">
-                    <div className="text-xs text-zinc-500 flex items-center gap-2">
-                      <HardDrive size={13} />
+                  <div className="flex items-center justify-between px-1">
+                    <div className="text-xs font-mono text-zinc-400 flex items-center gap-2">
+                      <HardDrive size={13} className="text-zinc-500" />
                       <span>{SPECS[provForm.instance_size].storage}</span>
                     </div>
-                    <div className="flex items-baseline gap-1.5 text-white">
-                      <span className="text-xs text-zinc-500">Estimated Cost:</span>
-                      <div className="font-mono text-sm font-semibold text-emerald-400 overflow-hidden">
+                    <div className="flex items-baseline gap-2 text-white">
+                      <span className="text-xs font-mono text-zinc-500">Estimated Cost:</span>
+                      <div className="font-mono text-base font-bold text-emerald-400 overflow-hidden">
                         <AnimatePresence mode="popLayout">
                           <motion.span
                             key={`${provForm.resource_type}-${provForm.instance_size}`}
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -8 }}
-                            transition={springTransition}
+                            transition={{ type: "spring", stiffness: 450, damping: 30 }}
                             className="inline-block"
                           >
                             ${PRICING[provForm.resource_type][provForm.instance_size]}/mo
@@ -1541,8 +1570,8 @@ export default function DashboardPage() {
                     disabled={provLoading}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
-                    transition={springTransition}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-white text-black py-3.5 text-sm font-semibold hover:bg-zinc-200 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                    transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                    className="w-full flex items-center justify-center gap-2 rounded-2xl bg-white text-black py-3.5 text-sm font-semibold hover:bg-zinc-200 transition-colors shadow-[0_0_30px_rgba(255,255,255,0.15)] font-mono"
                   >
                     {provLoading ? (
                       <>
@@ -1560,9 +1589,9 @@ export default function DashboardPage() {
               </form>
               ) : (
                 /* Terminal Body */
-                <div className="flex flex-col h-full bg-[#0a0a0c] rounded-b-3xl">
+                <div className="flex flex-col h-full bg-[#08080a] rounded-b-3xl">
                   {provForm._requestId ? (
-                    <div className="p-4 flex-1">
+                    <div className="p-5 flex-1">
                       <ProvisioningTerminal 
                         requestId={provForm._requestId} 
                         onComplete={() => {
@@ -1600,7 +1629,7 @@ export default function DashboardPage() {
                   )}
 
                   {!provLoading && (
-                    <div className="p-6 border-t border-white/5 bg-[#0a0a0c] shrink-0 z-10 rounded-b-3xl">
+                    <div className="p-6 border-t border-white/10 bg-[#0c0d11]/90 shrink-0 z-10 rounded-b-3xl">
                       <button
                         onClick={() => {
                           setShowProvisionModal(false);
@@ -1609,7 +1638,7 @@ export default function DashboardPage() {
                             setProvForm(p => ({ ...p, _requestId: null }));
                           }, 300);
                         }}
-                        className="w-full py-3 rounded-xl bg-white/10 text-white font-semibold text-sm hover:bg-white/20 transition-colors shadow-lg"
+                        className="w-full py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm transition-all shadow-md font-mono border border-white/10"
                       >
                         Close & View Dashboard
                       </button>
