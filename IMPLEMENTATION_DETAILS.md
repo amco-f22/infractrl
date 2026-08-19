@@ -357,8 +357,30 @@ The Terraform IAM policy was upgraded to a comprehensive configuration (v5) cove
 ## Infrastructure Cleanup & Final Security Touches
 - **Dynamic IP Updates Auth:** The /api/requests/{request_id}/update-ip endpoint is now guarded by checking the x-user-email header against the resource owner's email, preventing unauthorized security group modifications.
 - **Frontend Cleanup:** Redis and S3 resource placeholders were completely removed from the provisioning UI to avoid confusion until they are implemented in Terraform.
-- **Project Structure:** Deleted stale erify.py and erify_sync.py debug scripts, and confirmed the cleanup of unused directories (e.g., lambda/).
+- **Project Structure:** Deleted stale verify.py and verify_sync.py debug scripts, and confirmed the cleanup of unused directories (e.g., lambda/).
 - **Slack Masking & CORS:** Verified that connection strings are securely masked/omitted from Slack notification payloads, and confirmed CORS origins are properly dynamically loaded via .env.
 - **Connection String Masking:** Verified that GET /api/requests (which populates the main dashboard list) correctly masks all connection strings using regex. The true connection string is only exposed via the heavily guarded /api/requests/{id}/connection-string endpoint.
-- **Resource Creation Authorization:** Hardened POST /api/requests by verifying the x-user-email header matches the equester_email in the payload, preventing unauthenticated bots from spamming AWS provisioning requests.
-- **AWS Budget Automation:** Integrated the AWS Budget creation directly into ootstrap_aws.sh using the existing udget.json and udget-notifications.json files, ensuring the \ alert is actually provisioned and not just documented as a manual step.
+- **Resource Creation Authorization:** Hardened POST /api/requests by verifying the x-user-email header matches the requester_email in the payload, preventing unauthenticated bots from spamming AWS provisioning requests.
+- **AWS Budget Automation:** Integrated the AWS Budget creation directly into `bootstrap_aws.sh` using the existing `budget.json` and `budget-notifications.json` files, ensuring the $10 alert is actually provisioned and not just documented as a manual step.
+
+## 🐛 August 2026 Edge-Case & Stability Fixes
+
+### 1. Terraform State Race Conditions (Duplicate Instances)
+- **The Issue:** Triggering the "Update IP" action multiple times quickly spawned concurrent GitHub Actions workflows (`update-sg.yml`). Because the S3 backend was using an unsupported `use_lockfile = true` instead of `dynamodb_table`, Terraform failed to acquire state locks, causing state corruption and resulting in duplicate PostgreSQL databases being provisioned instead of modified.
+- **The Fix:** Added a `concurrency` block (grouped by `request_id`) to `.github/workflows/update-sg.yml` to prevent simultaneous runs. Explicitly declared `dynamodb_table = "infractl-terraform-locks"` in both `main.tf` and the `update-sg.yml` `terraform init` commands to enforce strict locking.
+
+### 2. Missing GitHub Action Failure Reporting (Silent Failures)
+- **The Issue:** The Security Group update workflow (`update-sg.yml`) did not report pipeline failures back to the FastAPI backend. If the workflow failed (e.g. invalid GitHub API token or Terraform error), the frontend silently hung, assuming success because the dispatch request had been accepted.
+- **The Fix:** Added an `if: failure()` step in `update-sg.yml` that securely executes a webhook `POST` to the `/api/requests/{id}/progress` endpoint, ensuring the backend marks the step as failed and immediately reflects the failure in the UI terminal.
+
+### 3. Policy Engine Validation Errors (422 Unprocessable Entity)
+- **The Issue:** The Policy Preview endpoint expects a strictly validated string for `requester_email`. Users logging in via GitHub OAuth whose accounts lacked a public email were resolving `session.user.email` as `null`. This payload triggered a Pydantic `422 Unprocessable Entity` crash.
+- **The Fix:** Implemented a frontend fallback mechanism in `frontend/app/dashboard/page.js` to dispatch `"unknown@example.com"` whenever the OAuth session email resolves to `null`, ensuring the strict policy engine requirements are satisfied.
+
+### 4. Production Log Streaming (Provisioning Terminal)
+- **The Issue:** The live `ProvisioningTerminal.js` UI was entirely broken in production (Vercel) because it was fetching log streams from a hardcoded `http://localhost:8000/api/...` URL, causing CORS and connection refused errors.
+- **The Fix:** Swapped the endpoint to dynamically use the Next.js API proxy (`/api/backend/api/...`), successfully routing traffic to the active backend deployment without exposing backend ports.
+
+### 5. React Infinite Loop on Completion
+- **The Issue:** `ProvisioningTerminal.js` triggered its `onComplete` prop (which called `fetchRequests` to refresh dashboard metrics) when logs signaled success or failure. The dashboard refresh caused a re-render, creating a new `onComplete` function reference, which caused the terminal's `useEffect` to fire again, instantly triggering another `fetchRequests`, locking the browser in an infinite refresh loop.
+- **The Fix:** Introduced a `hasCompletedRef = useRef(false)` inside the terminal component to track callback execution, guaranteeing `onComplete` is fired exactly once per terminal lifecycle.
