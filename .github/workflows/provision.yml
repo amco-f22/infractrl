@@ -147,13 +147,37 @@ jobs:
       - name: Terraform Apply
         working-directory: ./terraform
         run: |
+          set -o pipefail
+          # Run terraform and stream its output to a while loop
           terraform apply -auto-approve \
             -var="request_id=${{ github.event.inputs.request_id }}" \
             -var="resource_type=${{ github.event.inputs.resource_type }}" \
             -var="instance_size=${{ github.event.inputs.instance_size }}" \
             -var="requester_email=${{ github.event.inputs.email }}" \
             -var="environment=${{ github.event.inputs.environment }}" \
-            -var="allowed_ip=${{ github.event.inputs.allowed_ip }}"
+            -var="allowed_ip=${{ github.event.inputs.allowed_ip }}" 2>&1 | while IFS= read -r line; do
+            
+            # Print to GitHub Actions log
+            echo "$line"
+            
+            # Filter output to only send significant progress lines to the UI terminal
+            if [[ "$line" == *"Still creating..."* ]] || [[ "$line" == *"Creation complete"* ]] || [[ "$line" == *"Apply complete!"* ]] || [[ "$line" == *"Error:"* ]]; then
+              # Strip ANSI colors using sed
+              CLEAN_LINE=$(echo "$line" | sed -e 's/\x1b\[[0-9;]*m//g' -e 's/\x1b\[[0-9;]*K//g')
+              
+              # Safely build JSON payload with jq
+              JSON_PAYLOAD=$(jq -n --arg msg "$CLEAN_LINE" '{"step":"terraform_apply","status":"running","message":$msg}')
+              
+              # Fire webhook in background so it doesn't block terraform stdout
+              curl -s -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
+                -H "Content-Type: application/json" \
+                -H "x-api-key: ${WEBHOOK_API_KEY}" \
+                -d "$JSON_PAYLOAD" &
+            fi
+          done
+          
+          # Wait for any background curls to finish
+          wait
 
       - name: Report — Infrastructure Created
         working-directory: ./terraform
