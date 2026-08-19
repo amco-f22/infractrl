@@ -16,36 +16,36 @@ export default function HeroPreview() {
       initial={{ opacity: 0, y: 35, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.7, ease: "easeOut", delay: 0.2 }}
-      className="relative mx-auto mt-16 max-w-5xl text-left"
+      className="relative mx-auto mt-10 sm:mt-16 max-w-5xl text-left"
     >
-      <div className="pointer-events-none absolute -inset-x-20 -top-10 bottom-0 bg-cyan-500/10 blur-[100px] rounded-full" />
-      <div className="relative grid lg:grid-cols-5 gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3 backdrop-blur-xl shadow-2xl shadow-black/80 hover:border-white/20 transition-all duration-300">
+      <div className="pointer-events-none absolute -inset-x-10 sm:-inset-x-20 -top-10 bottom-0 bg-cyan-500/10 blur-[80px] sm:blur-[100px] rounded-full" />
+      <div className="relative grid lg:grid-cols-5 gap-3 sm:gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-2.5 sm:p-3 backdrop-blur-xl shadow-2xl shadow-black/80 hover:border-white/20 transition-all duration-300">
         <div className="lg:col-span-3 rounded-xl border border-white/10 bg-[#0a0a0c] overflow-hidden">
           <TerminalMockup />
         </div>
-        <div className="lg:col-span-2 rounded-xl border border-white/10 bg-[#0a0a0c] p-4 flex flex-col justify-between">
+        <div className="lg:col-span-2 rounded-xl border border-white/10 bg-[#0a0a0c] p-3.5 sm:p-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
               <span className="text-xs font-semibold text-zinc-300">Live Dashboard</span>
               <span className="text-[11px] font-mono text-emerald-400 font-medium">3 active</span>
             </div>
-            <div className="mt-3 space-y-2.5">
+            <div className="mt-3 space-y-2 sm:space-y-2.5">
               {resources.map((r) => (
                 <div
                   key={r.name}
-                  className="group rounded-lg border border-white/5 bg-white/[0.02] p-3 hover:bg-white/[0.05] hover:border-white/15 transition-all duration-200 cursor-default"
+                  className="group rounded-lg border border-white/5 bg-white/[0.02] p-2.5 sm:p-3 hover:bg-white/[0.05] hover:border-white/15 transition-all duration-200 cursor-default"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <Database className="w-3.5 h-3.5 text-cyan-300 shrink-0 group-hover:scale-110 group-hover:text-cyan-200 transition-all duration-200" />
                       <span className="text-xs font-medium text-white truncate group-hover:text-cyan-200 transition-colors">{r.name}</span>
                     </div>
                     {r.status === "Ready" ? (
-                      <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 group-hover:brightness-125 transition-all">
+                      <span className="shrink-0 flex items-center gap-1 text-[10px] font-mono text-emerald-400 group-hover:brightness-125 transition-all">
                         <CheckCircle2 className="w-3 h-3" /> Ready
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-[10px] font-mono text-amber-300 group-hover:brightness-125 transition-all">
+                      <span className="shrink-0 flex items-center gap-1 text-[10px] font-mono text-amber-300 group-hover:brightness-125 transition-all">
                         <span className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" /> {r.status}
                       </span>
                     )}

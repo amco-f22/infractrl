@@ -80,18 +80,18 @@ export default function DashboardSection() {
   const liveTotal = active.reduce((s, r) => s + liveSpend(r, now), 0);
 
   return (
-    <section id="dashboard" className="relative py-24 sm:py-32 border-t border-white/5">
-      <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-gradient-to-r from-green-500/[0.08] to-cyan-500/[0.08] blur-[150px]" />
-      <div className="relative mx-auto max-w-7xl px-6">
+    <section id="dashboard" className="relative py-16 sm:py-24 md:py-32 border-t border-white/5">
+      <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 w-[350px] sm:w-[800px] h-[300px] sm:h-[400px] rounded-full bg-gradient-to-r from-green-500/[0.08] to-cyan-500/[0.08] blur-[100px] sm:blur-[150px]" />
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div className="max-w-2xl">
             <span className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400/90 font-mono">
               Live dashboard
             </span>
-            <h2 className="mt-3 text-3xl sm:text-5xl font-semibold tracking-[-0.02em] text-white">
+            <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-semibold tracking-[-0.02em] text-white">
               Your resources, in <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent">real time</span>
             </h2>
-            <p className="mt-4 text-zinc-400 leading-relaxed">
+            <p className="mt-3 sm:mt-4 text-sm sm:text-base text-zinc-400 leading-relaxed">
               Every active resource and its estimated monthly cost — with live spend
               ticking up by the second as your infrastructure runs.
             </p>
@@ -103,7 +103,7 @@ export default function DashboardSection() {
         </div>
 
         {/* Summary stats matching landing page SpotlightCard pattern */}
-        <div className="mt-10 grid sm:grid-cols-3 gap-4">
+        <div className="mt-8 sm:mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
           <StatCard
             icon={Gauge}
             label="Estimated monthly cost"
@@ -128,7 +128,7 @@ export default function DashboardSection() {
           />
         </div>
 
-        {/* Resource list with Spotlight & clean subtle row highlights */}
+        {/* Resource list with Spotlight & mobile-responsive card/table layout */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -140,6 +140,7 @@ export default function DashboardSection() {
             spotlightColor="rgba(45, 212, 191, 0.15)"
             className="rounded-2xl border border-white/10 bg-white/[0.025] overflow-hidden shadow-2xl hover:border-white/20 transition-all duration-300"
           >
+            {/* Desktop Table Header */}
             <div className="hidden sm:grid grid-cols-12 gap-4 px-6 py-3.5 border-b border-white/10 text-[11px] uppercase tracking-wider text-zinc-400 font-mono bg-white/[0.01]">
               <div className="col-span-4">Resource</div>
               <div className="col-span-2">Type</div>
@@ -167,38 +168,74 @@ export default function DashboardSection() {
                   const name = r.name || `${r.environment || 'dev'}-${r.resource_type || 'db'}-${(r.id || '').substring(0, 4)}`;
 
                   return (
-                    <div
-                      key={r.id}
-                      className="group grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 px-6 py-4 items-center hover:bg-white/[0.03] transition-colors duration-200 cursor-default"
-                    >
-                      <div className="sm:col-span-4 flex items-center gap-3.5 min-w-0">
-                        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border ${t.ring} ${t.color}`}>
-                          <Database className="w-4 h-4" />
-                        </span>
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-white font-mono truncate group-hover:text-cyan-200 transition-colors">
-                            {name}
+                    <div key={r.id}>
+                      {/* Mobile Card Layout (< 640px) */}
+                      <div className="sm:hidden p-4 space-y-3 hover:bg-white/[0.03] transition-colors duration-200 cursor-default">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border ${t.ring} ${t.color}`}>
+                              <Database className="w-3.5 h-3.5" />
+                            </span>
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-white font-mono truncate">
+                                {name}
+                              </div>
+                              <div className="text-[10.5px] text-zinc-400 font-mono">
+                                {r.instance_size || "small"} · {r.environment || "dev"}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-[11px] text-zinc-400 font-mono">
-                            {r.instance_size || "small"} · {r.environment || "dev"}
+                          <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono ${s.cls}`}>
+                            {s.pulse && <span className="h-1 w-1 rounded-full bg-current animate-pulse" />}
+                            {s.label}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 pt-2.5 border-t border-white/5 text-[11px] font-mono items-center">
+                          <div className="flex items-center gap-1.5 text-zinc-300">
+                            <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />
+                            <span className="truncate">{t.label}</span>
+                          </div>
+                          <div className="text-right text-emerald-300 font-semibold">
+                            {fmt(getMonthlyCost(r))}
+                          </div>
+                          <div className="text-right text-cyan-200 font-bold tabular-nums">
+                            {fmt(liveSpend(r, now), 4)}
                           </div>
                         </div>
                       </div>
-                      <div className="sm:col-span-2 flex items-center gap-2 text-sm text-zinc-300 font-mono">
-                        <span className={`h-2 w-2 rounded-full ${t.dot}`} />
-                        {t.label}
-                      </div>
-                      <div className="sm:col-span-2">
-                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-mono ${s.cls}`}>
-                          {s.pulse && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
-                          {s.label}
-                        </span>
-                      </div>
-                      <div className="sm:col-span-2 sm:text-right text-sm font-semibold text-emerald-300 font-mono">
-                        {fmt(getMonthlyCost(r))}
-                      </div>
-                      <div className="sm:col-span-2 sm:text-right font-mono text-[13px] text-cyan-200 tabular-nums font-bold">
-                        {fmt(liveSpend(r, now), 4)}
+
+                      {/* Desktop Table Grid Row (>= 640px) */}
+                      <div className="hidden sm:grid sm:grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-white/[0.03] transition-colors duration-200 cursor-default">
+                        <div className="sm:col-span-4 flex items-center gap-3.5 min-w-0">
+                          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border ${t.ring} ${t.color}`}>
+                            <Database className="w-4 h-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-white font-mono truncate group-hover:text-cyan-200 transition-colors">
+                              {name}
+                            </div>
+                            <div className="text-[11px] text-zinc-400 font-mono">
+                              {r.instance_size || "small"} · {r.environment || "dev"}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="sm:col-span-2 flex items-center gap-2 text-sm text-zinc-300 font-mono">
+                          <span className={`h-2 w-2 rounded-full ${t.dot}`} />
+                          {t.label}
+                        </div>
+                        <div className="sm:col-span-2">
+                          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-mono ${s.cls}`}>
+                            {s.pulse && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
+                            {s.label}
+                          </span>
+                        </div>
+                        <div className="sm:col-span-2 sm:text-right text-sm font-semibold text-emerald-300 font-mono">
+                          {fmt(getMonthlyCost(r))}
+                        </div>
+                        <div className="sm:col-span-2 sm:text-right font-mono text-[13px] text-cyan-200 tabular-nums font-bold">
+                          {fmt(liveSpend(r, now), 4)}
+                        </div>
                       </div>
                     </div>
                   );
@@ -222,11 +259,11 @@ function StatCard({ icon: Icon, label, value, accent, live, spotlightColor = "rg
     >
       <SpotlightCard
         spotlightColor={spotlightColor}
-        className="p-5 h-full hover:border-white/20 transition-all duration-300 shadow-sm"
+        className="p-4 sm:p-5 h-full hover:border-white/20 transition-all duration-300 shadow-sm"
       >
         <div className="flex items-center justify-between">
-          <span className={`grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br ${accent} text-black font-bold shadow-md shadow-emerald-500/10`}>
-            <Icon className="w-4 h-4" />
+          <span className={`grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-xl bg-gradient-to-br ${accent} text-black font-bold shadow-md shadow-emerald-500/10`}>
+            <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </span>
           {live ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-mono">
@@ -237,10 +274,10 @@ function StatCard({ icon: Icon, label, value, accent, live, spotlightColor = "rg
             <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Metrics</span>
           )}
         </div>
-        <div className="mt-4 text-2xl sm:text-3xl font-semibold tabular-nums text-white font-mono">
+        <div className="mt-3.5 sm:mt-4 text-2xl sm:text-3xl font-semibold tabular-nums text-white font-mono">
           {value}
         </div>
-        <div className="mt-1 text-xs text-zinc-400 font-mono">
+        <div className="mt-1 text-[11px] sm:text-xs text-zinc-400 font-mono">
           {label}
         </div>
       </SpotlightCard>

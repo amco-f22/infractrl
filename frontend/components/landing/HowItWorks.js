@@ -12,19 +12,19 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="relative py-24 sm:py-32 border-t border-white/5">
-      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full bg-gradient-to-r from-green-500/[0.07] to-cyan-500/[0.07] blur-[150px]" />
-      <div className="relative mx-auto max-w-7xl px-6">
+    <section id="how-it-works" className="relative py-16 sm:py-24 md:py-32 border-t border-white/5">
+      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] sm:w-[800px] h-[300px] sm:h-[400px] rounded-full bg-gradient-to-r from-green-500/[0.07] to-cyan-500/[0.07] blur-[100px] sm:blur-[150px]" />
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
         <div className="max-w-2xl">
           <span className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400 font-mono">
             How it works
           </span>
-          <h2 className="mt-3 text-3xl sm:text-5xl font-semibold tracking-[-0.02em] text-white">
+          <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-semibold tracking-[-0.02em] text-white">
             From request to teardown, <span className="text-emerald-300">fully automated</span>
           </h2>
         </div>
 
-        <div className="mt-14 grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="mt-10 sm:mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
           {steps.map((s, i) => (
             <motion.div
               key={s.title}
@@ -32,18 +32,18 @@ export default function HowItWorks() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.5, delay: i * 0.08 }}
-              className="relative rounded-2xl border border-white/10 bg-white/[0.025] p-6 hover:border-white/20 transition-colors"
+              className="relative rounded-2xl border border-white/10 bg-white/[0.025] p-5 sm:p-6 hover:border-white/20 transition-colors"
             >
               <div className="flex items-center justify-between">
-                <span className="grid place-items-center w-11 h-11 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300">
-                  <s.icon className="w-5 h-5" />
+                <span className="grid place-items-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300">
+                  <s.icon className="w-4 h-4 sm:w-5 sm:h-5" />
                 </span>
-                <span className="text-5xl font-semibold text-white/[0.06] tabular-nums font-mono">
+                <span className="text-4xl sm:text-5xl font-semibold text-white/[0.06] tabular-nums font-mono">
                   {String(i + 1).padStart(2, "0")}
                 </span>
               </div>
-              <h3 className="mt-5 text-lg font-medium text-white">{s.title}</h3>
-              <p className="mt-2 text-sm text-zinc-400 leading-relaxed">{s.desc}</p>
+              <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-medium text-white">{s.title}</h3>
+              <p className="mt-2 text-xs sm:text-sm text-zinc-400 leading-relaxed">{s.desc}</p>
             </motion.div>
           ))}
         </div>

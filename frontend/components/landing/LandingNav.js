@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession, signIn, signOut } from "next-auth/react";
-import { Menu, X, ArrowRight, User, LogOut } from "lucide-react";
+import { Menu, X, ArrowRight, LogOut, Github } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { BrandLogo } from "@/components/BrandLogo";
 
@@ -28,19 +29,32 @@ export default function LandingNav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [open]);
+
   return (
     <header
       className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "border-b border-white/10 bg-[#000000]/80 backdrop-blur-xl"
-          : "border-b border-transparent"
+        scrolled || open
+          ? "border-b border-white/10 bg-[#000000]/90 backdrop-blur-xl"
+          : "border-b border-transparent bg-transparent"
       }`}
     >
-      <nav className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center group">
+      <nav className="mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center justify-between">
+        <Link href="/" className="flex items-center group touch-manipulation">
           <BrandLogo size="md" />
         </Link>
 
+        {/* Desktop Navigation Links */}
         <div className="hidden md:flex items-center gap-8">
           {links.map((l) => (
             <a
@@ -53,6 +67,7 @@ export default function LandingNav() {
           ))}
         </div>
 
+        {/* Desktop Action Buttons */}
         <div className="hidden md:flex items-center gap-3">
           <a
             href={REPO_URL}
@@ -93,48 +108,124 @@ export default function LandingNav() {
           )}
         </div>
 
+        {/* Mobile Hamburger Toggle */}
         <button
-          className="md:hidden grid place-items-center w-9 h-9 rounded-lg border border-white/10 text-zinc-300"
+          className="md:hidden flex items-center justify-center w-10 h-10 -mr-1 rounded-xl border border-white/10 bg-white/[0.03] text-zinc-200 hover:text-white hover:bg-white/[0.08] active:scale-95 transition-all touch-manipulation"
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle menu"
+          aria-expanded={open}
         >
-          {open ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
       </nav>
 
-      {open && (
-        <div className="md:hidden border-t border-white/10 bg-[#000000]/95 backdrop-blur-xl px-6 py-4 space-y-3">
-          {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              onClick={() => setOpen(false)}
-              className="block text-sm text-zinc-300 hover:text-white"
-            >
-              {l.label}
-            </a>
-          ))}
-          {session?.user ? (
-            <Link
-              href="/dashboard"
-              onClick={() => setOpen(false)}
-              className="block text-center text-sm font-semibold px-4 py-2 rounded-lg bg-white text-[#000000]"
-            >
-              Go to Dashboard →
-            </Link>
-          ) : (
-            <button
-              onClick={() => {
-                setOpen(false);
-                signIn("github", { callbackUrl: "/dashboard" });
-              }}
-              className="w-full text-center text-sm font-semibold px-4 py-2 rounded-lg bg-white text-[#000000]"
-            >
-              Sign in with GitHub
-            </button>
-          )}
-        </div>
-      )}
+      {/* Mobile Slide-Down Menu Overlay */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="md:hidden overflow-hidden border-t border-white/10 bg-[#000000]/95 backdrop-blur-2xl px-5 py-6"
+          >
+            <div className="space-y-1">
+              {links.map((l) => (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-300 hover:text-white hover:bg-white/[0.05] transition-colors"
+                >
+                  <span>{l.label}</span>
+                  <ArrowRight size={14} className="text-zinc-600" />
+                </a>
+              ))}
+            </div>
+
+            <div className="mt-5 pt-5 border-t border-white/10 space-y-3">
+              {session?.user ? (
+                <>
+                  <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5">
+                    {session.user.image ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={session.user.image}
+                        alt={session.user.name || "User"}
+                        className="w-8 h-8 rounded-full border border-white/10"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-xs font-mono text-cyan-300">
+                        {(session.user.name || "U")[0]}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-semibold text-white truncate">{session.user.name || "Signed in"}</div>
+                      <div className="text-[11px] text-zinc-400 font-mono truncate">{session.user.email || "GitHub User"}</div>
+                    </div>
+                  </div>
+
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setOpen(false)}
+                    className="w-full flex items-center justify-center gap-2 text-sm font-semibold py-3 px-4 rounded-xl bg-white text-black hover:bg-zinc-200 transition-colors shadow-lg active:scale-[0.98]"
+                  >
+                    <span>Go to Fleet Dashboard</span>
+                    <ArrowRight size={15} />
+                  </Link>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <a
+                      href={REPO_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg border border-white/10 bg-white/[0.02] text-xs font-medium text-zinc-300 hover:text-white transition-colors"
+                    >
+                      <Github size={14} />
+                      <span>GitHub</span>
+                    </a>
+                    <button
+                      onClick={() => {
+                        setOpen(false);
+                        signOut();
+                      }}
+                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg border border-red-500/20 bg-red-500/5 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <LogOut size={14} />
+                      <span>Sign out</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setOpen(false);
+                      signIn("github", { callbackUrl: "/dashboard" });
+                    }}
+                    className="w-full flex items-center justify-center gap-2 text-sm font-semibold py-3 px-4 rounded-xl bg-white text-black hover:bg-zinc-200 transition-colors shadow-lg active:scale-[0.98]"
+                  >
+                    <span>Sign in with GitHub</span>
+                    <ArrowRight size={15} />
+                  </button>
+
+                  <a
+                    href={REPO_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setOpen(false)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border border-white/10 bg-white/[0.02] text-xs font-medium text-zinc-300 hover:text-white transition-colors"
+                  >
+                    <Github size={14} />
+                    <span>Star on GitHub</span>
+                  </a>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }
