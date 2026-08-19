@@ -3,6 +3,8 @@ import re
 import json
 from datetime import datetime, timedelta
 from typing import List, Optional
+import hmac
+import hashlib
 
 import psycopg2
 import httpx
@@ -274,6 +276,178 @@ async def send_slack_notification(message: str):
         except Exception as e:
             print(f"Failed to send Slack notification: {e}")
 
+async def send_interactive_slack_approval(request_id: str, requester_name: str, resource_type: str, instance_size: str, environment: str, cost: int, reason: str):
+    """Sends an interactive Block Kit message to a Slack channel via Webhook."""
+    webhook_url = os.getenv("SLACK_WEBHOOK_URL")
+    if not webhook_url:
+        print("Slack Webhook URL not configured. Skipping interactive notification.")
+        return
+        
+    payload = {
+        "text": f"⏳ Approval needed: {requester_name} requested {resource_type} ({instance_size}, {environment})",
+        "blocks": [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"⏳ *Approval needed:*\n*{requester_name}* requested a *{resource_type}* instance (`{instance_size}`, `{environment}`).\n*Estimated cost:* ${cost}/mo\n*Reason:* {reason}"
+                }
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Approve",
+                            "emoji": True
+                        },
+                        "style": "primary",
+                        "value": f"approve_{request_id}",
+                        "action_id": "approve_request"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Deny",
+                            "emoji": True
+                        },
+                        "style": "danger",
+                        "value": f"deny_{request_id}",
+                        "action_id": "deny_request"
+                    }
+                ]
+            }
+        ]
+    }
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(webhook_url, json=payload)
+            response.raise_for_status()
+            print(f"Successfully sent interactive Slack notification for {request_id}.")
+        except Exception as e:
+            print(f"Failed to send interactive Slack notification: {e}")
+
+# ================================================================
+# SLACK INTERACTIVITY
+# ================================================================
+
+async def verify_slack_signature(request: Request):
+    """Verifies that the request came from Slack."""
+    secret = os.getenv("SLACK_SIGNING_SECRET")
+    if not secret:
+        raise HTTPException(status_code=400, detail="Slack signing secret not configured")
+
+    timestamp = request.headers.get("X-Slack-Request-Timestamp")
+    signature = request.headers.get("X-Slack-Signature")
+
+    if not timestamp or not signature:
+        raise HTTPException(status_code=400, detail="Missing Slack signature headers")
+
+    # Guard against replay attacks
+    if abs(datetime.now().timestamp() - int(timestamp)) > 60 * 5:
+        raise HTTPException(status_code=400, detail="Replay attack detected")
+
+    body = await request.body()
+    sig_basestring = f"v0:{timestamp}:{body.decode('utf-8')}"
+    my_signature = "v0=" + hmac.new(
+        secret.encode(),
+        sig_basestring.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    if not hmac.compare_digest(my_signature, signature):
+        raise HTTPException(status_code=400, detail="Invalid Slack signature")
+
+@app.post("/api/slack/interactivity")
+async def slack_interactivity(request: Request, background_tasks: BackgroundTasks):
+    await verify_slack_signature(request)
+    form_data = await request.form()
+    payload_str = form_data.get("payload")
+    if not payload_str:
+        raise HTTPException(status_code=400, detail="Missing payload")
+        
+    payload = json.loads(payload_str)
+    
+    # We only care about interactive actions (button clicks)
+    if payload.get("type") != "block_actions":
+        return {"status": "ignored"}
+        
+    user = payload.get("user", {}).get("username", "admin")
+    actions = payload.get("actions", [])
+    response_url = payload.get("response_url")
+    
+    if not actions or not response_url:
+        return {"status": "ignored"}
+        
+    action = actions[0]
+    action_value = action.get("value", "")
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        if action_value.startswith("approve_"):
+            request_id = action_value.replace("approve_", "")
+            
+            cur.execute("SELECT resource_type, instance_size, requester_email, environment, allowed_ip, status FROM requests WHERE id = %s", (request_id,))
+            req = cur.fetchone()
+            if not req or req["status"] != "pending_approval":
+                return {"status": "ignored or already processed"}
+                
+            cur.execute("UPDATE requests SET status = 'provisioning' WHERE id = %s", (request_id,))
+            conn.commit()
+            
+            # Trigger workflow
+            background_tasks.add_task(
+                trigger_github_workflow,
+                request_id, req["resource_type"], req["instance_size"],
+                req["requester_email"], req["environment"], req["allowed_ip"]
+            )
+            
+            # Send updated message to Slack
+            msg = f"✅ *Approved* by @{user}. Provisioning started."
+            
+        elif action_value.startswith("deny_"):
+            request_id = action_value.replace("deny_", "")
+            
+            cur.execute("UPDATE requests SET status = 'denied' WHERE id = %s", (request_id,))
+            conn.commit()
+            
+            msg = f"❌ *Denied* by @{user}."
+            
+        else:
+            return {"status": "unknown action"}
+            
+        # Update original Slack message using response_url
+        if response_url:
+            async with httpx.AsyncClient() as client:
+                await client.post(response_url, json={
+                    "replace_original": True,
+                    "text": msg,
+                    "blocks": [
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": msg
+                            }
+                        }
+                    ]
+                })
+                
+        return {"status": "processed"}
+    except Exception as e:
+        print(f"Error handling Slack interactive payload: {e}")
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
 # ================================================================
 # API ENDPOINTS
 # ================================================================
@@ -513,9 +687,17 @@ async def create_request(request_data: CreateRequest, background_tasks: Backgrou
             slack_msg = f"✅ *Auto-approved*: {request_data.requester_name} requested {request_data.resource_type} ({request_data.instance_size}, {request_data.environment})\nEstimated cost: ${new_cost}/mo\nProvisioning now... (no human needed)"
             background_tasks.add_task(send_slack_notification, slack_msg)
         else:
-            # Pending approval Slack message
-            slack_msg = f"⏳ *Approval needed*: {request_data.requester_name} requested {request_data.resource_type} ({request_data.instance_size}, {request_data.environment})\nEstimated cost: ${new_cost}/mo\nReason: {reason}\nGo to dashboard to approve or deny."
-            background_tasks.add_task(send_slack_notification, slack_msg)
+            # Pending approval Slack message with interactive buttons
+            background_tasks.add_task(
+                send_interactive_slack_approval,
+                req_id,
+                request_data.requester_name,
+                request_data.resource_type,
+                request_data.instance_size,
+                request_data.environment,
+                new_cost,
+                reason
+            )
         
         return {
             "id": req_id,
