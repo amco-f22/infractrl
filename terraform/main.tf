@@ -28,7 +28,7 @@ terraform {
     bucket         = "infractl-terraform-state"
     key            = "state/placeholder.tfstate" # Overridden at runtime via -backend-config
     region         = "us-east-1"
-    dynamodb_table = "infractl-terraform-locks"
+    use_lockfile   = true
     encrypt        = true
   }
 }

@@ -145,7 +145,8 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
   if (!req) return null;
 
   const API_URL = "/api/backend";
-  const isOwner = session?.user?.email && session.user.email === req.requester_email;
+  const effEmail = session?.user?.email || (session?.user?.id ? `id-${session.user.id}@github.local` : "unknown@example.com");
+  const isOwner = effEmail && effEmail === req.requester_email;
   const type = (req.resource_type || "postgres").toLowerCase();
   const t = typeMeta[type] || typeMeta.postgres;
   const TypeIcon = t.icon || Database;
@@ -167,7 +168,7 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "x-user-email": session?.user?.email || ""
+          "x-user-email": effEmail
         },
         body: JSON.stringify({ new_allowed_ip: currentIp }),
       });
@@ -194,7 +195,7 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
     try {
       const res = await fetch(
         `${API_URL}/api/requests/${req.id}/connection-string`, {
-          headers: { 'x-user-email': session?.user?.email || '' }
+          headers: { 'x-user-email': effEmail }
         }
       );
       if (res.ok) {
@@ -544,6 +545,7 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
 
 export default function DashboardPage() {
   const { data: session, status: authStatus } = useSession();
+  const effEmail = session?.user?.email || (session?.user?.id ? `id-${session.user.id}@github.local` : "unknown@example.com");
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -581,7 +583,8 @@ export default function DashboardPage() {
               instance_size: provForm.instance_size,
               resource_type: provForm.resource_type,
               estimated_cost: cost,
-              requester_email: session?.user?.email || "unknown@example.com"
+              requester_email: effEmail,
+              name: provForm.name || undefined
             })
           });
           if (res.ok) {
@@ -596,7 +599,7 @@ export default function DashboardPage() {
       };
       fetchPreview();
     }
-  }, [provForm, session?.user?.email]);
+  }, [provForm, effEmail]);
   
   const addLog = (msg) => {
     setTerminalLogs((prev) => [...prev, { time: new Date().toISOString(), text: msg }]);
@@ -680,7 +683,9 @@ export default function DashboardPage() {
 
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-    addLog(`[SYSTEM] Initiating Provisioning Request by ${session.user.email}...`);
+    const cost = PRICING[provForm.resource_type]?.[provForm.instance_size] || 0;
+    addLog(`[SYSTEM] Initiating Provisioning Request by ${effEmail}...`);
+    addLog(`Target environment: ${provForm.environment.toUpperCase()}`);
     await sleep(600);
     
     if (expectedStatus === "auto_denied") {
@@ -714,7 +719,7 @@ export default function DashboardPage() {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "x-user-email": session?.user?.email || ""
+          "x-user-email": effEmail
         },
         body: JSON.stringify(payload),
       }).then(() => fetchRequests());
@@ -731,7 +736,7 @@ export default function DashboardPage() {
     const payload = {
       ...provForm,
       requester_name: session.user.name || "Developer",
-      requester_email: session?.user?.email || "unknown@example.com",
+      requester_email: effEmail,
       allowed_ip: provForm.allowed_ip || "0.0.0.0",
     };
 
@@ -740,7 +745,7 @@ export default function DashboardPage() {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "x-user-email": session?.user?.email || ""
+          "x-user-email": effEmail
         },
         body: JSON.stringify(payload),
       });

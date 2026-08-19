@@ -366,16 +366,16 @@ The Terraform IAM policy was upgraded to a comprehensive configuration (v5) cove
 ## 🐛 August 2026 Edge-Case & Stability Fixes
 
 ### 1. Terraform State Race Conditions (Duplicate Instances)
-- **The Issue:** Triggering the "Update IP" action multiple times quickly spawned concurrent GitHub Actions workflows (`update-sg.yml`). Because the S3 backend was using an unsupported `use_lockfile = true` instead of `dynamodb_table`, Terraform failed to acquire state locks, causing state corruption and resulting in duplicate PostgreSQL databases being provisioned instead of modified.
-- **The Fix:** Added a `concurrency` block (grouped by `request_id`) to `.github/workflows/update-sg.yml` to prevent simultaneous runs. Explicitly declared `dynamodb_table = "infractl-terraform-locks"` in both `main.tf` and the `update-sg.yml` `terraform init` commands to enforce strict locking.
+- **The Issue:** Triggering the "Update IP" action multiple times quickly spawned concurrent GitHub Actions workflows (`update-sg.yml`), causing Terraform to run simultaneously and resulting in duplicate PostgreSQL databases being provisioned instead of modified.
+- **The Fix:** Added a strict `concurrency` block (grouped by `request_id`) to `.github/workflows/update-sg.yml` to prevent simultaneous runs. This fully resolved the race condition while allowing us to continue using Terraform 1.7+'s native S3 state locking (`use_lockfile = true`) without needing to reintroduce the legacy DynamoDB lock table.
 
 ### 2. Missing GitHub Action Failure Reporting (Silent Failures)
 - **The Issue:** The Security Group update workflow (`update-sg.yml`) did not report pipeline failures back to the FastAPI backend. If the workflow failed (e.g. invalid GitHub API token or Terraform error), the frontend silently hung, assuming success because the dispatch request had been accepted.
 - **The Fix:** Added an `if: failure()` step in `update-sg.yml` that securely executes a webhook `POST` to the `/api/requests/{id}/progress` endpoint, ensuring the backend marks the step as failed and immediately reflects the failure in the UI terminal.
 
 ### 3. Policy Engine Validation Errors (422 Unprocessable Entity)
-- **The Issue:** The Policy Preview endpoint expects a strictly validated string for `requester_email`. Users logging in via GitHub OAuth whose accounts lacked a public email were resolving `session.user.email` as `null`. This payload triggered a Pydantic `422 Unprocessable Entity` crash.
-- **The Fix:** Implemented a frontend fallback mechanism in `frontend/app/dashboard/page.js` to dispatch `"unknown@example.com"` whenever the OAuth session email resolves to `null`, ensuring the strict policy engine requirements are satisfied.
+- **The Issue:** The Policy Preview endpoint expects a strictly validated string for `requester_email`. Users logging in via GitHub OAuth whose accounts lacked a public email were resolving `session.user.email` as `null`. 
+- **The Fix:** Implemented a robust deterministic identity fallback using the GitHub User ID (`id-${session.user.id}@github.local`). This satisfies Pydantic's string validation without creating false-positive identity collisions (unlike a generic `unknown@example.com` string), ensuring ownership checks (`isOwner`) remain strictly siloed per user.
 
 ### 4. Production Log Streaming (Provisioning Terminal)
 - **The Issue:** The live `ProvisioningTerminal.js` UI was entirely broken in production (Vercel) because it was fetching log streams from a hardcoded `http://localhost:8000/api/...` URL, causing CORS and connection refused errors.
@@ -400,7 +400,7 @@ The application is deployed using a decoupled frontend/backend architecture, dis
   - `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` (GitHub OAuth Application credentials)
   - `BACKEND_API_URL` (Pointer to the Railway deployment, e.g., `https://infractl-api.up.railway.app`)
   - `INTERNAL_API_KEY` (Pre-shared key to authorize proxy requests to the backend)
-- **Proxy Routing:** Next.js handles all client-side requests via the `/api/backend/[...path]` route handler, which securely injects the `INTERNAL_API_KEY` and forwards the request to Railway, preventing the frontend from exposing API keys to the browser.
+- **Proxy Routing Security:** Next.js handles all client-side requests via the `/api/backend/[...path]` route handler. Crucially, this proxy **overwrites** any client-supplied `x-user-email` header by reading the identity directly from the secure server-side NextAuth session (`await auth()`). This entirely eliminates the vulnerability of users forging the `x-user-email` header in the browser. It securely injects the `INTERNAL_API_KEY` and forwards the request to Railway.
 
 ### 2. Backend (Railway)
 - **Framework:** FastAPI (Python 3.13).

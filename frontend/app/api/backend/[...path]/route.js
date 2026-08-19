@@ -20,7 +20,7 @@ export async function DELETE(request, { params }) {
 async function proxyRequest(request, paramsPromise, method) {
   // 1. Verify NextAuth Session
   const session = await auth();
-  if (!session?.user?.email) {
+  if (!session?.user) {
     return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
   }
 
@@ -36,8 +36,9 @@ async function proxyRequest(request, paramsPromise, method) {
 
   // 3. Inject Security Headers
   const headers = new Headers(request.headers);
+  const effectiveEmail = session.user.email || `id-${session.user.id}@github.local`;
   headers.set("x-internal-api-key", process.env.INTERNAL_API_KEY || "dev-internal-key-123");
-  headers.set("x-user-email", session.user.email);
+  headers.set("x-user-email", effectiveEmail);
   
   // Clean up host header so the backend doesn't get confused
   headers.delete("host");

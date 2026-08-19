@@ -65,7 +65,7 @@ jobs:
             -backend-config="bucket=infractl-terraform-state" \
             -backend-config="key=state/${{ github.event.inputs.request_id }}.tfstate" \
             -backend-config="region=us-east-1" \
-            -backend-config="dynamodb_table=infractl-terraform-locks"
+            -backend-config="use_lockfile=true"
             
           # Run terraform apply with the new IP and original configuration values
           terraform apply -auto-approve \
