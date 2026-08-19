@@ -59,7 +59,7 @@ jobs:
           curl -sf -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ${WEBHOOK_API_KEY}" \
-            -d "{\"step\":\"workflow_start\",\"status\":\"running\",\"message\":\"🚀 GitHub Actions workflow started\",\"details\":{\"run_id\":\"${{ github.run_id }}\",\"run_url\":\"${RUN_URL}\"}}" \
+            -d "{\"step\":\"workflow_start\",\"status\":\"success\",\"message\":\"🚀 GitHub Actions workflow started\",\"details\":{\"run_id\":\"${{ github.run_id }}\",\"run_url\":\"${RUN_URL}\"}}" \
             || echo "Backend callback failed (non-fatal)"
 
       - name: Checkout Code
@@ -135,13 +135,13 @@ jobs:
             -d '{"step":"terraform_init","status":"success","message":"✅ Terraform state backend initialized (isolated S3 state per request)"}' \
             || echo "Backend callback failed (non-fatal)"
 
-      - name: Report — Terraform Plan Starting
+      - name: Report — Terraform Plan
         run: |
           [ -z "$BACKEND_URL" ] && exit 0
           curl -sf -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ${WEBHOOK_API_KEY}" \
-            -d '{"step":"terraform_plan","status":"running","message":"📋 Computing Terraform plan..."}' \
+            -d '{"step":"terraform_plan","status":"success","message":"📋 Terraform plan computed (auto-approve enabled)"}' \
             || echo "Backend callback failed (non-fatal)"
 
       - name: Terraform Apply
@@ -184,10 +184,20 @@ jobs:
         run: |
           [ -z "$BACKEND_URL" ] && exit 0
           # Capture Terraform outputs if available, fall back gracefully
-          ENDPOINT=$(terraform output -raw rds_endpoint 2>/dev/null || echo "")
-          RESOURCE_ID=$(terraform output -raw aws_resource_id 2>/dev/null || echo "")
-          DETAILS="{}"
-          [ -n "$ENDPOINT" ] && DETAILS="{\"endpoint\":\"${ENDPOINT}\",\"aws_resource_id\":\"${RESOURCE_ID}\"}"
+          ENDPOINT=$(terraform output -raw connection_string 2>/dev/null || echo "N/A")
+          RESOURCE_ID=$(terraform output -raw aws_resource_id 2>/dev/null || echo "N/A")
+          
+          # If the wrapper injected an error string because the output didn't exist, ignore it
+          if [[ "$ENDPOINT" == *"::error::"* ]]; then
+            ENDPOINT="N/A"
+          fi
+          
+          if [ "$ENDPOINT" != "N/A" ] && [ -n "$ENDPOINT" ]; then
+            DETAILS="{\"endpoint\":\"${ENDPOINT}\",\"aws_resource_id\":\"${RESOURCE_ID}\"}"
+          else
+            DETAILS="{}"
+          fi
+          
           curl -sf -X POST "${BACKEND_URL}/api/requests/${REQUEST_ID}/progress" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ${WEBHOOK_API_KEY}" \
@@ -199,16 +209,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Get Terraform Outputs and Update Status
-        working-directory: ./terraform
-        env:
-          API_URL: ${{ secrets.PROD_API_URL }}
-        run: |
-          export TF_OUT_CONNECTION_STRING=$(terraform output -raw connection_string)
-          export TF_OUT_AWS_RESOURCE_ID=$(terraform output -raw aws_resource_id)
-          cd ../
-          python .github/scripts/update_status.py
-
       - name: Report — Complete (Success)
         if: success()
         run: |
@@ -218,6 +218,16 @@ jobs:
             -H "x-api-key: ${WEBHOOK_API_KEY}" \
             -d '{"step":"complete","status":"success","message":"🎉 Provisioning complete! Your resource is ready."}' \
             || echo "Backend callback failed (non-fatal)"
+
+      - name: Get Terraform Outputs and Update Status
+        working-directory: ./terraform
+        env:
+          API_URL: ${{ secrets.PROD_API_URL }}
+        run: |
+          export TF_OUT_CONNECTION_STRING=$(terraform output -raw connection_string)
+          export TF_OUT_AWS_RESOURCE_ID=$(terraform output -raw aws_resource_id)
+          cd ../
+          python .github/scripts/update_status.py
 
       # On failure, update the request status to 'failed' so the dashboard reflects it
       - name: Update Status to Failed (on error)
