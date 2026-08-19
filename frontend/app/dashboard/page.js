@@ -69,6 +69,7 @@ const statusMeta = {
   failed: { label: "Failed", cls: "text-red-400 border-red-500/30 bg-red-500/10" },
   Failed: { label: "Failed", cls: "text-red-400 border-red-500/30 bg-red-500/10" },
   auto_denied: { label: "Auto-Denied", cls: "text-red-400 border-red-500/30 bg-red-500/10" },
+  destroying: { label: "Destroying", cls: "text-red-400 border-red-500/30 bg-red-500/10", pulse: true },
 };
 
 const springTransition = {
