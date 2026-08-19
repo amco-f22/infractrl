@@ -169,8 +169,25 @@ async def trigger_github_workflow(request_id: str, resource_type: str, instance_
     owner = os.getenv("GITHUB_OWNER")
     repo = os.getenv("GITHUB_REPO")
     
+    def log_failure(msg):
+        c = get_db_connection()
+        try:
+            with c.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO provisioning_logs (request_id, step, status, message)
+                    VALUES (%s, %s, %s, %s)
+                """, (request_id, 'github_trigger', 'failed', msg))
+                cur.execute("UPDATE requests SET status = 'failed', failed_reason = %s WHERE id = %s", (msg, request_id))
+                c.commit()
+        except Exception as e:
+            print(f"Failed to log failure: {e}")
+        finally:
+            c.close()
+
     if not all([token, owner, repo]):
-        print("GitHub configuration missing, skipping workflow trigger.")
+        msg = "GitHub configuration missing, skipping workflow trigger."
+        print(msg)
+        log_failure(msg)
         return False
 
     url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/provision.yml/dispatches"
@@ -198,66 +215,12 @@ async def trigger_github_workflow(request_id: str, resource_type: str, instance_
             print(f"Triggered GitHub Action for request {request_id}")
             return True
         except Exception as e:
-            print(f"Failed to trigger GitHub Action: {e}")
+            msg = f"Failed to trigger GitHub Action: {e}"
+            print(msg)
+            log_failure(msg)
             return False
 
-# =======================================================
-# LOCAL DEMO SIMULATION (Runs in background)
-# =======================================================
-async def simulate_pipeline(request_id: str):
-    import asyncio
-    import json
-    
-    def push_log(step, status, msg, details=None):
-        c = get_db_connection()
-        try:
-            with c.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO provisioning_logs (request_id, step, status, message, details)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (request_id, step, status, msg, json.dumps(details) if details else None))
-                c.commit()
-        except Exception as e:
-            print(f"Failed to push log: {e}")
-        finally:
-            c.close()
-    
-    await asyncio.sleep(1)
-    push_log("workflow_start", "running", "🚀 GitHub Actions workflow started", {"run_url": "http://github.com/..."})
-    
-    await asyncio.sleep(2)
-    push_log("checkout", "success", "✅ Repository checked out")
-    
-    await asyncio.sleep(2)
-    push_log("terraform_setup", "success", "✅ Terraform CLI installed")
-    
-    await asyncio.sleep(3)
-    push_log("aws_auth", "success", "✅ AWS credentials configured via OIDC")
-    
-    await asyncio.sleep(4)
-    push_log("terraform_init", "success", "📦 Terraform backend initialized")
-    
-    await asyncio.sleep(3)
-    push_log("terraform_plan", "success", "📋 Terraform plan generated")
-    
-    await asyncio.sleep(5)
-    endpoint = f"db-{request_id[:6]}.us-east-1.rds.amazonaws.com"
-    push_log("terraform_apply", "success", "🏗️ AWS resources created", {"endpoint": endpoint})
-    
-    await asyncio.sleep(4)
-    push_log("complete", "success", "🎉 Provisioning complete! Your resource is ready.")
-    
-    # Finally, update the request status to ready
-    c = get_db_connection()
-    try:
-        with c.cursor() as cur:
-            cur.execute(
-                "UPDATE requests SET status = 'ready', connection_string = %s WHERE id = %s", 
-                (f"postgres://admin:********@{endpoint}:5432/main", request_id)
-            )
-            c.commit()
-    finally:
-        c.close()
+
 
 # ========================
 # Slack Integration
@@ -496,18 +459,11 @@ async def create_request(request_data: CreateRequest, background_tasks: Backgrou
         conn.commit()
         
         # Actions based on decision
-        if decision == PolicyAction.AUTO_APPROVED:
-            # Try to trigger real GitHub Action
-            async def trigger_or_simulate():
-                success = await trigger_github_workflow(
-                    req_id, request_data.resource_type, request_data.instance_size, 
-                    request_data.requester_email, request_data.environment, request_data.allowed_ip
-                )
-                if not success:
-                    print("Falling back to local simulation mode...")
-                    await simulate_pipeline(req_id)
-
-            background_tasks.add_task(trigger_or_simulate)
+            background_tasks.add_task(
+                trigger_github_workflow, 
+                req_id, request_data.resource_type, request_data.instance_size, 
+                request_data.requester_email, request_data.environment, request_data.allowed_ip
+            )
             # Slack message
             slack_msg = f"✅ *Auto-approved*: {request_data.requester_name} requested {request_data.resource_type} ({request_data.instance_size}, {request_data.environment})\nEstimated cost: ${new_cost}/mo\nProvisioning now... (no human needed)"
             background_tasks.add_task(send_slack_notification, slack_msg)
@@ -1111,6 +1067,9 @@ async def update_request_ip(request_id: str, ip_data: UpdateIpRequest):
                     response.raise_for_status()
                 except Exception as e:
                     print(f"Failed to trigger SG update workflow: {e}")
+                    raise HTTPException(status_code=500, detail="Failed to trigger GitHub Action for SG update.")
+        else:
+            raise HTTPException(status_code=500, detail="GitHub Actions token missing. SG not updated.")
                     
         return {"message": "IP updated and SG update triggered", "allowed_ip": ip_data.new_allowed_ip}
     except HTTPException:

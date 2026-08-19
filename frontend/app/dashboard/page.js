@@ -175,7 +175,8 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
         toast.success(`Network locked to IP: ${currentIp}`, { id: toastId });
         onRefresh();
       } else {
-        toast.error("Failed to update firewall IP", { id: toastId });
+        const data = await res.json();
+        toast.error(`Failed to update firewall IP: ${data.detail || "Unknown error"}`, { id: toastId });
       }
     } catch (e) {
       toast.error("Network error updating IP", { id: toastId });
@@ -219,7 +220,8 @@ function ResourceDetailsModal({ req, session, onClose, onRefresh }) {
         toast.success("Lifecycle extended by +7 days!");
         onRefresh();
       } else {
-        toast.error("Failed to extend lifespan");
+        const data = await res.json();
+        toast.error(`Failed to extend lifespan: ${data.detail || "Unknown error"}`);
       }
     } catch {
       toast.error("Network error");
@@ -651,7 +653,8 @@ export default function DashboardPage() {
         toast.success("Lifecycle extended by +7 days!");
         await fetchRequests();
       } else {
-        toast.error("Failed to extend lifespan");
+        const data = await res.json();
+        toast.error(`Failed to extend lifespan: ${data.detail || "Unknown error"}`);
       }
     } catch {
       toast.error("Network error");
