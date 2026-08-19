@@ -863,15 +863,22 @@ export default function DashboardPage() {
     }
   };
 
+  // Initial data load
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
     fetchRequests();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchAuditLogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const interval = setInterval(() => fetchRequests(), 30000);
-    return () => clearInterval(interval);
   }, []);
+
+  // Adaptive polling loop
+  useEffect(() => {
+    const hasActiveStates = requests.some(r => ["pending_approval", "provisioning"].includes((r.status || "").toLowerCase()));
+    const pollingMs = hasActiveStates ? 3000 : 30000;
+    
+    const interval = setInterval(() => fetchRequests(), pollingMs);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests]);
 
   const active = requests.filter((r) => !["deleted", "failed"].includes((r.status || "").toLowerCase()));
   const monthlyTotal = active.reduce((s, r) => s + getMonthlyCost(r), 0);
@@ -1268,7 +1275,7 @@ export default function DashboardPage() {
 
             <div className="p-3.5 px-5 border-t border-white/5 flex items-center justify-between text-[11px] font-mono text-zinc-500 bg-white/[0.01]">
               <span>Showing {filteredRequests.length} of {requests.length} resources</span>
-              <span>30s polling cycle active</span>
+              <span>{requests.some(r => ["pending_approval", "provisioning"].includes((r.status || "").toLowerCase())) ? "3s" : "30s"} polling cycle active</span>
             </div>
           </div>
         ) : (
