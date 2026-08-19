@@ -35,8 +35,8 @@ app.add_middleware(
 
 @app.middleware("http")
 async def require_internal_api_key(request: Request, call_next):
-    # Skip webhook endpoints
-    if request.url.path.endswith("/progress") or request.url.path.endswith("/slack/interactivity"):
+    # Skip webhook endpoints (called from GitHub Actions / Slack — not user-facing)
+    if request.url.path.endswith("/progress") or request.url.path.endswith("/status") or request.url.path.endswith("/slack/interactivity"):
         return await call_next(request)
         
     # Protect all other /api routes
