@@ -857,13 +857,30 @@ async def get_team_members():
 @app.post("/api/requests/clone-setup")
 async def clone_user_setup(clone_data: CloneRequest, background_tasks: BackgroundTasks):
     """Clone all active resources from one user to another (onboarding)."""
+    # Authorization gate: restrict provisioning to allowed emails
+    authorized_raw = os.getenv("AUTHORIZED_EMAILS", "")
+    authorized_emails = [e.strip().lower() for e in authorized_raw.split(",") if e.strip()]
+    if authorized_emails:
+        requester = clone_data.target_email.strip().lower()
+        if requester not in authorized_emails:
+            raise HTTPException(
+                status_code=403,
+                detail="You are not authorized to clone/provision resources. Contact the platform admin."
+            )
+
+    token = os.getenv("GITHUB_TOKEN")
+    owner = os.getenv("GITHUB_OWNER")
+    repo = os.getenv("GITHUB_REPO")
+    if not all([token, owner, repo]):
+        raise HTTPException(status_code=500, detail="GitHub configuration missing. Cannot provision cloned resources.")
+
     conn = get_db_connection()
     cur = conn.cursor()
     
     try:
         # Get source user's active resources
         cur.execute("""
-            SELECT resource_type, instance_size, environment
+            SELECT resource_type, instance_size, environment, allowed_ip
             FROM requests
             WHERE requester_email = %s
               AND status IN ('ready', 'provisioning')
@@ -883,8 +900,8 @@ async def clone_user_setup(clone_data: CloneRequest, background_tasks: Backgroun
             cur.execute("""
                 INSERT INTO requests (
                     requester_name, requester_email, resource_type,
-                    environment, instance_size, expiry_date, status
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    environment, instance_size, expiry_date, status, allowed_ip
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id;
             """, (
                 clone_data.target_name,
@@ -893,7 +910,8 @@ async def clone_user_setup(clone_data: CloneRequest, background_tasks: Backgroun
                 res["environment"],
                 res["instance_size"],
                 expiry_date,
-                "provisioning"
+                "provisioning",
+                res.get("allowed_ip", "0.0.0.0")
             ))
             
             new_id = str(cur.fetchone()["id"])
@@ -909,7 +927,7 @@ async def clone_user_setup(clone_data: CloneRequest, background_tasks: Backgroun
             background_tasks.add_task(
                 trigger_github_workflow,
                 new_id, res["resource_type"], res["instance_size"],
-                clone_data.target_email, res["environment"]
+                clone_data.target_email, res["environment"], res.get("allowed_ip", "0.0.0.0")
             )
         
         conn.commit()
