@@ -67,7 +67,7 @@ export default function Hero() {
           </h1>
 
           {/* Editorial serif description matching exact font styling of reference image */}
-          <p className="font-editorial mx-auto mt-8 sm:mt-10 max-w-2xl text-[1.35rem] xs:text-2xl sm:text-[1.7rem] text-zinc-300 font-normal leading-[1.42] tracking-tight px-1 xs:px-2">
+          <p className="font-editorial mx-auto mt-8 sm:mt-10 max-w-2xl text-[1.35rem] xs:text-2xl sm:text-[1.7rem] bg-gradient-to-b from-white to-zinc-400 bg-clip-text text-transparent drop-shadow-[0_2px_10px_rgba(255,255,255,0.1)] font-normal leading-[1.6] tracking-tight px-1 xs:px-2">
             InfraCtrl{" "}
             <span className="italic">
               kills the DevOps bottleneck
