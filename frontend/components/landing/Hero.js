@@ -26,7 +26,7 @@ export default function Hero() {
           className="max-w-5xl mx-auto"
         >
           {/* Top announcement pill */}
-          <div className="flex justify-center mb-5 sm:mb-6">
+          <div className="flex justify-center mb-8 sm:mb-10">
             <a
               href={REPO_URL}
               target="_blank"
@@ -40,7 +40,7 @@ export default function Hero() {
           </div>
 
           {/* Headline with exact line breaks matching image on mobile and large text size */}
-          <h1 className="text-[2.75rem] xs:text-[3.25rem] sm:text-6xl md:text-7xl lg:text-[5.5rem] font-bold tracking-[-0.04em] text-white leading-[1.08] sm:leading-[1.03]">
+          <h1 className="text-5xl xs:text-6xl sm:text-6xl md:text-7xl lg:text-[5.5rem] font-bold tracking-[-0.04em] text-white leading-[1.08] sm:leading-[1.03]">
             <span className="block sm:inline">Request cloud</span>{" "}
             <span className="block sm:inline">databases</span>
             <span className="hidden sm:inline"><br /></span>
@@ -66,14 +66,14 @@ export default function Hero() {
             <span className="block sm:inline sm:ml-3 text-zinc-300">not 5 days</span>
           </h1>
 
-          {/* All-italic editorial serif description with 2-color fading gradient highlight */}
-          <p className="font-editorial italic mx-auto mt-6 sm:mt-8 max-w-2xl text-xl xs:text-2xl sm:text-[1.7rem] text-zinc-300 font-normal leading-[1.42] tracking-tight px-1 xs:px-2">
+          {/* Editorial serif description matching exact font styling of reference image */}
+          <p className="font-editorial mx-auto mt-8 sm:mt-10 max-w-2xl text-[1.35rem] xs:text-2xl sm:text-[1.7rem] text-zinc-300 font-normal leading-[1.42] tracking-tight px-1 xs:px-2">
             InfraCtrl{" "}
-            <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent font-normal">
+            <span className="italic text-[#7084c2]">
               kills the DevOps bottleneck
             </span>
             . Self-serve{" "}
-            <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent font-normal">
+            <span className="italic text-[#7084c2]">
               ephemeral developer infrastructure
             </span>{" "}
             with automated Terraform provisioning, per-second cost metering, and automatic teardown.
