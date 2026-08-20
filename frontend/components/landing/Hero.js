@@ -66,9 +66,17 @@ export default function Hero() {
             <span className="block sm:inline sm:ml-3 text-zinc-300">not 5 days</span>
           </h1>
 
-          {/* Description matching user's editorial serif + italic accent reference */}
-          <p className="font-editorial mx-auto mt-6 sm:mt-8 max-w-2xl text-xl xs:text-2xl sm:text-[1.7rem] text-zinc-300 font-normal leading-[1.38] tracking-tight px-1 xs:px-2">
-            InfraCtrl <span className="italic text-cyan-300 font-normal">kills the DevOps bottleneck</span>. Self-serve <span className="italic text-cyan-300 font-normal">ephemeral developer infrastructure</span> with automated Terraform provisioning, per-second cost metering, and automatic teardown.
+          {/* All-italic editorial serif description with 2-color fading gradient highlight */}
+          <p className="font-editorial italic mx-auto mt-6 sm:mt-8 max-w-2xl text-xl xs:text-2xl sm:text-[1.7rem] text-zinc-300 font-normal leading-[1.42] tracking-tight px-1 xs:px-2">
+            InfraCtrl{" "}
+            <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent font-normal">
+              kills the DevOps bottleneck
+            </span>
+            . Self-serve{" "}
+            <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent font-normal">
+              ephemeral developer infrastructure
+            </span>{" "}
+            with automated Terraform provisioning, per-second cost metering, and automatic teardown.
           </p>
 
           {/* CTA Action Area */}
