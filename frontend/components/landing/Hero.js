@@ -39,26 +39,31 @@ export default function Hero() {
             </a>
           </div>
 
-          {/* Broad, high-impact headline */}
-          <h1 className="text-[2.65rem] xs:text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] font-extrabold tracking-[-0.04em] text-white leading-[1.04] sm:leading-[1.02]">
-            Request cloud databases
-            <br className="hidden xs:block" /> in{" "}
-            <span className="relative inline-block whitespace-nowrap">
-              <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(34,211,238,0.25)]">
-                5 minutes
+          {/* Headline with exact line breaks matching image on mobile */}
+          <h1 className="text-4xl xs:text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-[-0.035em] text-white leading-[1.12] sm:leading-[1.04]">
+            <span className="block sm:inline">Request cloud</span>{" "}
+            <span className="block sm:inline">databases</span>
+            <span className="hidden sm:inline"><br /></span>
+            <span className="block sm:inline sm:ml-2">
+              in{" "}
+              <span className="relative inline-block whitespace-nowrap">
+                <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                  5 minutes
+                </span>
+                <svg className="absolute -bottom-1.5 sm:-bottom-2 left-0 w-full" height="10" viewBox="0 0 300 10" preserveAspectRatio="none">
+                  <path d="M2 7 Q 150 -2 298 6" fill="none" stroke="url(#hero-grad)" strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
+                  <defs>
+                    <linearGradient id="hero-grad" x1="0" x2="1">
+                      <stop offset="0%" stopColor="#4ade80" />
+                      <stop offset="50%" stopColor="#10b981" />
+                      <stop offset="100%" stopColor="#22d3ee" />
+                    </linearGradient>
+                  </defs>
+                </svg>
               </span>
-              <svg className="absolute -bottom-1.5 sm:-bottom-2.5 left-0 w-full" height="12" viewBox="0 0 300 12" preserveAspectRatio="none">
-                <path d="M2 8 Q 150 -2 298 7" fill="none" stroke="url(#hero-grad)" strokeWidth="3" strokeLinecap="round" opacity="0.9" />
-                <defs>
-                  <linearGradient id="hero-grad" x1="0" x2="1">
-                    <stop offset="0%" stopColor="#34d399" />
-                    <stop offset="50%" stopColor="#2dd4bf" />
-                    <stop offset="100%" stopColor="#38bdf8" />
-                  </linearGradient>
-                </defs>
-              </svg>
-            </span>
-            <span className="text-zinc-200">, not 5 days</span>
+              <span className="text-zinc-200">,</span>
+            </span>{" "}
+            <span className="block sm:inline text-zinc-300">not 5 days</span>
           </h1>
 
           {/* Description */}
