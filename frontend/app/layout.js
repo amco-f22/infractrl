@@ -24,8 +24,22 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata = {
+  metadataBase: new URL('https://infractrl.vercel.app'),
   title: "InfraCtrl | Developer Self-Service Infrastructure",
   description: "Request cloud databases in 5 minutes, not 5 days. Self-service ephemeral infrastructure with automated Terraform provisioning and live cost metering.",
+  openGraph: {
+    title: "InfraCtrl | Developer Self-Service",
+    description: "Request cloud databases in 5 minutes, not 5 days. Automated Terraform provisioning.",
+    url: "https://infractrl.vercel.app",
+    siteName: "InfraCtrl",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "InfraCtrl | Developer Self-Service",
+    description: "Request cloud databases in 5 minutes, not 5 days. Automated Terraform provisioning.",
+  },
   icons: {
     icon: "/favicon.png",
     shortcut: "/favicon.ico",
