@@ -69,11 +69,11 @@ export default function Hero() {
           {/* Editorial serif description matching exact font styling of reference image */}
           <p className="font-editorial mx-auto mt-8 sm:mt-10 max-w-2xl text-[1.35rem] xs:text-2xl sm:text-[1.7rem] text-zinc-300 font-normal leading-[1.42] tracking-tight px-1 xs:px-2">
             InfraCtrl{" "}
-            <span className="italic text-[#7084c2]">
+            <span className="italic text-zinc-100">
               kills the DevOps bottleneck
             </span>
             . Self-serve{" "}
-            <span className="italic text-[#7084c2]">
+            <span className="italic text-zinc-100">
               ephemeral developer infrastructure
             </span>{" "}
             with automated Terraform provisioning, per-second cost metering, and automatic teardown.
