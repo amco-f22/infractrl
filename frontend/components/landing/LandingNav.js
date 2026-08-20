@@ -134,7 +134,12 @@ export default function LandingNav() {
                 <a
                   key={l.href}
                   href={l.href}
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    setOpen(false);
+                    if (typeof document !== "undefined") {
+                      document.body.style.overflow = "unset";
+                    }
+                  }}
                   className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-300 hover:text-white hover:bg-white/[0.05] transition-colors"
                 >
                   <span>{l.label}</span>
@@ -167,7 +172,12 @@ export default function LandingNav() {
 
                   <Link
                     href="/dashboard"
-                    onClick={() => setOpen(false)}
+                    onClick={() => {
+                      setOpen(false);
+                      if (typeof document !== "undefined") {
+                        document.body.style.overflow = "unset";
+                      }
+                    }}
                     className="w-full flex items-center justify-center gap-2 text-sm font-semibold py-3 px-4 rounded-xl bg-white text-black hover:bg-zinc-200 transition-colors shadow-lg active:scale-[0.98]"
                   >
                     <span>Go to Fleet Dashboard</span>
@@ -179,7 +189,12 @@ export default function LandingNav() {
                       href={REPO_URL}
                       target="_blank"
                       rel="noreferrer"
-                      onClick={() => setOpen(false)}
+                      onClick={() => {
+                        setOpen(false);
+                        if (typeof document !== "undefined") {
+                          document.body.style.overflow = "unset";
+                        }
+                      }}
                       className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg border border-white/10 bg-white/[0.02] text-xs font-medium text-zinc-300 hover:text-white transition-colors"
                     >
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
@@ -190,6 +205,9 @@ export default function LandingNav() {
                     <button
                       onClick={() => {
                         setOpen(false);
+                        if (typeof document !== "undefined") {
+                          document.body.style.overflow = "unset";
+                        }
                         signOut();
                       }}
                       className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg border border-red-500/20 bg-red-500/5 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
@@ -204,6 +222,9 @@ export default function LandingNav() {
                   <button
                     onClick={() => {
                       setOpen(false);
+                      if (typeof document !== "undefined") {
+                        document.body.style.overflow = "unset";
+                      }
                       signIn("github", { callbackUrl: "/dashboard" });
                     }}
                     className="w-full flex items-center justify-center gap-2 text-sm font-semibold py-3 px-4 rounded-xl bg-white text-black hover:bg-zinc-200 transition-colors shadow-lg active:scale-[0.98]"
@@ -216,7 +237,12 @@ export default function LandingNav() {
                     href={REPO_URL}
                     target="_blank"
                     rel="noreferrer"
-                    onClick={() => setOpen(false)}
+                    onClick={() => {
+                      setOpen(false);
+                      if (typeof document !== "undefined") {
+                        document.body.style.overflow = "unset";
+                      }
+                    }}
                     className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border border-white/10 bg-white/[0.02] text-xs font-medium text-zinc-300 hover:text-white transition-colors"
                   >
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">

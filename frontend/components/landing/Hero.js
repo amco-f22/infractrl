@@ -39,12 +39,12 @@ export default function Hero() {
             </a>
           </div>
 
-          {/* Headline with exact line breaks matching image on mobile */}
-          <h1 className="text-4xl xs:text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-[-0.035em] text-white leading-[1.12] sm:leading-[1.04]">
+          {/* Headline with exact line breaks matching image on mobile and large text size */}
+          <h1 className="text-[2.75rem] xs:text-[3.25rem] sm:text-6xl md:text-7xl lg:text-[5.5rem] font-bold tracking-[-0.04em] text-white leading-[1.08] sm:leading-[1.03]">
             <span className="block sm:inline">Request cloud</span>{" "}
             <span className="block sm:inline">databases</span>
             <span className="hidden sm:inline"><br /></span>
-            <span className="block sm:inline sm:ml-2">
+            <span className="block sm:inline sm:ml-3">
               in{" "}
               <span className="relative inline-block whitespace-nowrap">
                 <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent">
@@ -63,7 +63,7 @@ export default function Hero() {
               </span>
               <span className="text-zinc-200">,</span>
             </span>{" "}
-            <span className="block sm:inline text-zinc-300">not 5 days</span>
+            <span className="block sm:inline sm:ml-3 text-zinc-300">not 5 days</span>
           </h1>
 
           {/* Description */}
