@@ -46,7 +46,7 @@ export default function LandingNav() {
     <header
       className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
         scrolled || open
-          ? "border-b border-white/[0.08] bg-[#050507]/75 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.9),inset_0_-1px_0_0_rgba(255,255,255,0.05)]"
+          ? "border-b border-white/[0.08] bg-black/40 backdrop-blur-2xl backdrop-saturate-200 shadow-[0_4px_30px_rgba(0,0,0,0.5)]"
           : "border-b border-transparent bg-transparent"
       }`}
     >
@@ -55,13 +55,13 @@ export default function LandingNav() {
           <BrandLogo size="md" />
         </Link>
 
-        {/* Desktop Navigation Links (Apple liquid pill style) */}
-        <div className="hidden md:flex items-center gap-1 p-1 rounded-full border border-white/[0.06] bg-white/[0.02] backdrop-blur-md">
+        {/* Clean Desktop Navigation Links (No bulky dock) */}
+        <div className="hidden md:flex items-center gap-7 sm:gap-8">
           {links.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="text-xs sm:text-[13px] font-medium text-zinc-400 hover:text-white px-3.5 py-1.5 rounded-full hover:bg-white/[0.06] transition-all duration-200"
+              className="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150"
             >
               {l.label}
             </a>
