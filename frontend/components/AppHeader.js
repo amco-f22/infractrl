@@ -17,13 +17,18 @@ export default function AppHeader() {
     <header className="fixed top-0 inset-x-0 z-50 h-16 border-b border-white/[0.08] bg-[#030305]/85 backdrop-blur-2xl shadow-[0_4px_24px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.06)]">
       <div className="max-w-7xl mx-auto px-4 xs:px-5 sm:px-6 h-full flex items-center justify-between">
         
-        {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group touch-manipulation">
-          <BrandLogo size="md" />
-          <span className="text-[10px] uppercase font-mono tracking-widest px-2 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-semibold inline-block">
+        {/* Brand Logo & Console Tag */}
+        <div className="flex items-center gap-2 xs:gap-2.5">
+          <Link href="/" className="flex items-center group touch-manipulation" title="InfraCtrl Home">
+            {/* Mobile: Logo Icon only without text "InfraCtrl" */}
+            <BrandLogo iconOnly size="md" className="sm:hidden" />
+            {/* Desktop / Tablets: Full Brand Logo */}
+            <BrandLogo size="md" className="hidden sm:inline-flex" />
+          </Link>
+          <span className="text-[10px] uppercase font-mono tracking-widest px-2 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-semibold select-none pointer-events-none cursor-default">
             Console
           </span>
-        </Link>
+        </div>
 
         {/* Navigation Links */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
