@@ -42,6 +42,29 @@ export default function LandingNav() {
     };
   }, [open]);
 
+  const handleLinkClick = (e, href) => {
+    if (href.startsWith("#")) {
+      e.preventDefault();
+      setOpen(false);
+      if (typeof document !== "undefined") {
+        document.body.style.overflow = "unset";
+      }
+      setTimeout(() => {
+        const el = document.querySelector(href);
+        if (el) {
+          const yOffset = -70; // Header height offset
+          const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          window.scrollTo({ top: y, behavior: "smooth" });
+        }
+      }, 50);
+    } else {
+      setOpen(false);
+      if (typeof document !== "undefined") {
+        document.body.style.overflow = "unset";
+      }
+    }
+  };
+
   return (
     <header
       className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
@@ -55,12 +78,13 @@ export default function LandingNav() {
           <BrandLogo size="md" />
         </Link>
 
-        {/* Clean Desktop Navigation Links (No bulky dock) */}
+        {/* Clean Desktop Navigation Links */}
         <div className="hidden md:flex items-center gap-7 sm:gap-8">
           {links.map((l) => (
             <a
               key={l.href}
               href={l.href}
+              onClick={(e) => handleLinkClick(e, l.href)}
               className="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150"
             >
               {l.label}
@@ -109,15 +133,35 @@ export default function LandingNav() {
           )}
         </div>
 
-        {/* Mobile Hamburger Toggle */}
-        <button
-          className="md:hidden flex items-center justify-center w-10 h-10 -mr-1 rounded-xl border border-white/10 bg-white/[0.03] text-zinc-200 hover:text-white hover:bg-white/[0.08] active:scale-95 transition-all touch-manipulation"
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Toggle menu"
-          aria-expanded={open}
-        >
-          {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        {/* Mobile Header Bar Controls (Quick Action + Menu Toggle) */}
+        <div className="flex md:hidden items-center gap-2">
+          {session?.user ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 transition-all shadow-sm active:scale-95"
+            >
+              <span>Dashboard</span>
+              <ArrowRight size={12} />
+            </Link>
+          ) : (
+            <button
+              onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 transition-all active:scale-95"
+            >
+              Sign in
+            </button>
+          )}
+
+          {/* Mobile Hamburger Toggle */}
+          <button
+            className="flex items-center justify-center w-9 h-9 rounded-xl border border-white/10 bg-white/[0.04] text-zinc-200 hover:text-white hover:bg-white/[0.08] active:scale-95 transition-all touch-manipulation"
+            onClick={() => setOpen((v) => !v)}
+            aria-label="Toggle menu"
+            aria-expanded={open}
+          >
+            {open ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
+        </div>
       </nav>
 
       {/* Mobile Slide-Down Menu Overlay */}
@@ -135,13 +179,8 @@ export default function LandingNav() {
                 <a
                   key={l.href}
                   href={l.href}
-                  onClick={() => {
-                    setOpen(false);
-                    if (typeof document !== "undefined") {
-                      document.body.style.overflow = "unset";
-                    }
-                  }}
-                  className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-300 hover:text-white hover:bg-white/[0.05] transition-colors"
+                  onClick={(e) => handleLinkClick(e, l.href)}
+                  className="flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium text-zinc-300 hover:text-white hover:bg-white/[0.06] active:bg-white/[0.08] transition-colors"
                 >
                   <span>{l.label}</span>
                   <ArrowRight size={14} className="text-zinc-600" />
