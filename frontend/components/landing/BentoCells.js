@@ -13,7 +13,7 @@ export function ProvisioningCell() {
     >
       <div className="pointer-events-none absolute -top-16 -right-10 h-44 w-44 rounded-full bg-emerald-500/15 blur-3xl" />
       <div className="flex items-center gap-2.5">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-black font-bold shadow-md shadow-emerald-500/20">
+        <span className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/5 text-cyan-300">
           <Database className="w-4 h-4" />
         </span>
         <h3 className="text-base font-semibold text-white">Automated CI/CD provisioning</h3>

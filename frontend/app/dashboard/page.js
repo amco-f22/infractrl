@@ -933,7 +933,7 @@ export default function DashboardPage() {
           transition={springTransition}
           className="relative max-w-md w-full rounded-3xl border border-white/10 bg-white/[0.03] p-8 text-center backdrop-blur-2xl shadow-2xl"
         >
-          <div className="grid place-items-center w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-black font-bold mx-auto mb-5 shadow-lg shadow-emerald-500/20">
+          <div className="grid place-items-center w-12 h-12 rounded-2xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-400 mx-auto mb-5 shadow-[0_0_20px_rgba(34,211,238,0.15)]">
             <Shield size={22} />
           </div>
           <h2 className="text-2xl font-bold tracking-tight text-white">Authentication Required</h2>
@@ -1035,7 +1035,7 @@ export default function DashboardPage() {
           {/* Card 1: Monthly Cost */}
           <SpotlightCard spotlightColor="rgba(74, 222, 128, 0.2)" className="p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-green-400 via-emerald-400 to-cyan-400 text-black font-bold shadow-md shadow-green-500/20">
+              <span className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-emerald-400">
                 <Gauge className="w-4 h-4" />
               </span>
               <span className="text-[10px] font-mono text-zinc-400 uppercase">Run Rate</span>
@@ -1047,7 +1047,7 @@ export default function DashboardPage() {
           {/* Card 2: Active Resources */}
           <SpotlightCard spotlightColor="rgba(34, 211, 238, 0.2)" className="p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-400 text-black font-bold shadow-md shadow-cyan-500/20">
+              <span className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-cyan-400">
                 <Activity className="w-4 h-4" />
               </span>
               <span className="text-[10px] font-mono text-green-300">{active.length} active / {requests.length} total</span>
@@ -1065,7 +1065,7 @@ export default function DashboardPage() {
           {/* Card 3: Live Spend Ticker */}
           <SpotlightCard spotlightColor="rgba(52, 211, 153, 0.2)" className="p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-green-400 to-teal-400 text-black font-bold shadow-md shadow-emerald-500/20">
+              <span className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-teal-400">
                 <TrendingUp className="w-4 h-4" />
               </span>
               <span className="text-[10px] text-green-400 font-mono">● live</span>

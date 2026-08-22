@@ -249,7 +249,7 @@ export default function DashboardSection() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, accent, live, spotlightColor = "rgba(34, 211, 238, 0.18)" }) {
+function StatCard({ icon: Icon, label, value, accent, iconColor = "text-emerald-400", live, spotlightColor = "rgba(34, 211, 238, 0.18)" }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -262,8 +262,8 @@ function StatCard({ icon: Icon, label, value, accent, live, spotlightColor = "rg
         className="p-4 sm:p-5 h-full hover:border-white/20 transition-all duration-300 shadow-sm"
       >
         <div className="flex items-center justify-between">
-          <span className={`grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-xl bg-gradient-to-br ${accent} text-black font-bold shadow-md shadow-emerald-500/10`}>
-            <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-emerald-400">
+            <Icon className="w-4 h-4" />
           </span>
           {live ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-mono">

@@ -135,7 +135,7 @@ export default function OnboardingPage() {
 
         {/* Header */}
         <motion.div variants={itemVariants} className="text-center space-y-2 max-w-xl mx-auto">
-          <span className="grid place-items-center w-11 h-11 rounded-2xl bg-gradient-to-br from-green-400 via-emerald-400 to-cyan-400 text-black font-bold mx-auto mb-3 shadow-lg shadow-green-500/20">
+          <span className="grid place-items-center w-11 h-11 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 mx-auto mb-3 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
             <Users size={20} />
           </span>
           <h1 className="text-3xl sm:text-4xl font-semibold tracking-[-0.02em] text-white">
