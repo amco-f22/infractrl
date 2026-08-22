@@ -6,7 +6,7 @@ import { ArrowUpRight } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 
 const REPO_URL = "https://github.com/amco-f22/infractrl";
-const LINKEDIN_URL = "https://linkedin.com/in/amco-f22";
+const LINKEDIN_URL = "https://www.linkedin.com/in/aman-nikhare/";
 
 export default function LandingFooter() {
   const openCalendly = (e) => {

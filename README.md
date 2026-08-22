@@ -471,7 +471,7 @@ Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
 **Aman Nikhare** — DevOps & Cloud Engineer
 
 [![GitHub](https://img.shields.io/badge/GitHub-amco--f22-181717?style=flat-square&logo=github)](https://github.com/amco-f22)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Aman_Nikhare-0A66C2?style=flat-square&logo=linkedin)](https://linkedin.com/in/amco-f22)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Aman_Nikhare-0A66C2?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/aman-nikhare/)
 
 ---
 
