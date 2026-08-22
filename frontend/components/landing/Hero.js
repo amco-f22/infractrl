@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
-import { ArrowRight, Zap, ShieldCheck, Coins } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import HeroPreview from "./HeroPreview";
 
 const REPO_URL = "https://github.com/amco-f22/infractrl";
@@ -103,28 +103,6 @@ export default function Hero() {
               </svg>
               <span>Star on GitHub</span>
             </a>
-          </div>
-
-          {/* Minimalist Monospace Inline Bar (Option 3) */}
-          <div className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3.5 text-xs sm:text-[13px] font-mono">
-            <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/[0.04] text-zinc-300 shadow-[0_0_20px_rgba(16,185,129,0.08)]">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
-              <span className="text-emerald-300 font-semibold">5-min</span> spinup
-            </span>
-
-            <span className="text-zinc-600 hidden sm:inline select-none">·</span>
-
-            <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/[0.04] text-zinc-300 shadow-[0_0_20px_rgba(34,211,238,0.08)]">
-              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
-              <span className="text-cyan-300 font-semibold">0</span> tickets filed
-            </span>
-
-            <span className="text-zinc-600 hidden sm:inline select-none">·</span>
-
-            <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-teal-500/25 bg-teal-500/[0.04] text-zinc-300 shadow-[0_0_20px_rgba(45,212,191,0.08)]">
-              <span className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse shadow-[0_0_8px_#2dd4bf]" />
-              <span className="text-teal-300 font-semibold">$0</span> idle waste
-            </span>
           </div>
         </motion.div>
 
