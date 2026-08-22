@@ -46,7 +46,7 @@ export default function LandingNav() {
     <header
       className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
         scrolled || open
-          ? "border-b border-white/10 bg-[#000000]/90 backdrop-blur-xl"
+          ? "border-b border-white/[0.08] bg-[#050507]/75 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.9),inset_0_-1px_0_0_rgba(255,255,255,0.05)]"
           : "border-b border-transparent bg-transparent"
       }`}
     >
@@ -55,13 +55,13 @@ export default function LandingNav() {
           <BrandLogo size="md" />
         </Link>
 
-        {/* Desktop Navigation Links */}
-        <div className="hidden md:flex items-center gap-8">
+        {/* Desktop Navigation Links (Apple liquid pill style) */}
+        <div className="hidden md:flex items-center gap-1 p-1 rounded-full border border-white/[0.06] bg-white/[0.02] backdrop-blur-md">
           {links.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="text-sm text-zinc-400 hover:text-white transition-colors"
+              className="text-xs sm:text-[13px] font-medium text-zinc-400 hover:text-white px-3.5 py-1.5 rounded-full hover:bg-white/[0.06] transition-all duration-200"
             >
               {l.label}
             </a>
@@ -69,15 +69,15 @@ export default function LandingNav() {
         </div>
 
         {/* Desktop Action Buttons */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-2.5">
           <a
             href={REPO_URL}
             target="_blank"
             rel="noreferrer"
-            className="grid place-items-center w-9 h-9 rounded-lg border border-white/10 text-zinc-300 hover:text-white hover:border-white/20 transition-colors"
+            className="grid place-items-center w-8 h-8 rounded-full border border-white/10 bg-white/[0.03] text-zinc-300 hover:text-white hover:bg-white/[0.08] hover:border-white/20 transition-all"
             aria-label="GitHub repository"
           >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
             </svg>
           </a>
@@ -86,25 +86,25 @@ export default function LandingNav() {
             <div className="flex items-center gap-2">
               <Link
                 href="/dashboard"
-                className="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-white text-[#000000] hover:bg-zinc-200 transition-colors shadow-sm"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.18)] active:scale-[0.98]"
               >
                 <span>Dashboard</span>
-                <ArrowRight size={14} />
+                <ArrowRight size={13} />
               </Link>
               <button
                 onClick={() => signOut()}
-                className="p-2 rounded-lg border border-white/10 text-zinc-400 hover:text-red-400 hover:border-red-500/30 transition-colors"
+                className="p-1.5 rounded-full border border-white/10 text-zinc-400 hover:text-red-400 hover:border-red-500/30 transition-colors"
                 title="Sign out"
               >
-                <LogOut size={15} />
+                <LogOut size={14} />
               </button>
             </div>
           ) : (
             <button
               onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
-              className="text-sm font-semibold px-4 py-2 rounded-lg bg-white text-[#000000] hover:bg-zinc-200 transition-colors"
+              className="text-xs font-semibold px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.18)] active:scale-[0.98]"
             >
-              Sign in with GitHub
+              Sign in
             </button>
           )}
         </div>
@@ -128,7 +128,7 @@ export default function LandingNav() {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="md:hidden overflow-hidden border-t border-white/10 bg-[#000000]/95 backdrop-blur-2xl px-5 py-6"
+            className="md:hidden overflow-hidden border-t border-white/[0.08] bg-[#050507]/90 backdrop-blur-2xl backdrop-saturate-150 px-5 py-6 shadow-2xl"
           >
             <div className="space-y-1">
               {links.map((l) => (
