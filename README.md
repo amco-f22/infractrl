@@ -75,6 +75,10 @@ No tickets. No waiting. No idle cloud waste.
 
 ## Architecture
 
+<p align="center">
+  <img src="docs/Architecture.png" alt="InfraCtrl System Architecture" width="100%" />
+</p>
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                            DEVELOPER                                    │
@@ -332,6 +336,9 @@ infractl/
 │   ├── check_budgets.py           # Budget threshold checker
 │   ├── cleanup.py                 # Expired resource cleanup logic
 │   └── notify_expiry.py           # 24-hour Slack expiry warnings
+│
+├── docs/
+│   └── Architecture.png           # System architecture diagram
 │
 ├── docker-compose.yml             # Local PostgreSQL + Redis
 ├── permissions-policy.json        # IAM policy reference (least-privilege)
