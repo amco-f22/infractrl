@@ -1,6 +1,6 @@
 "use client";
 
-export function BrandLogo({ className = "", iconOnly = false, size = "md" }) {
+export function BrandLogo({ className = "", iconOnly = false, responsive = false, size = "md" }) {
   const heights = {
     sm: "h-6",
     md: "h-8 sm:h-9",
@@ -17,6 +17,27 @@ export function BrandLogo({ className = "", iconOnly = false, size = "md" }) {
           src="/logo-icon.png"
           alt="InfraCtrl"
           className={`${currentHeight} w-auto object-contain transition-transform duration-200 hover:scale-105 select-none`}
+        />
+      </div>
+    );
+  }
+
+  if (responsive) {
+    return (
+      <div className={`relative inline-flex items-center ${className}`}>
+        {/* Mobile: Logo Icon mark only */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logo-icon.png"
+          alt="InfraCtrl"
+          className={`${currentHeight} w-auto object-contain transition-transform duration-200 hover:scale-105 select-none sm:hidden`}
+        />
+        {/* Desktop: Full Logo with text */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logo-dark.png"
+          alt="InfraCtrl"
+          className={`${currentHeight} w-auto object-contain transition-transform duration-200 hover:scale-105 select-none hidden sm:block`}
         />
       </div>
     );

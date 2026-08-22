@@ -20,10 +20,7 @@ export default function AppHeader() {
         {/* Brand Logo & Console Tag */}
         <div className="flex items-center gap-2 xs:gap-2.5">
           <Link href="/" className="flex items-center group touch-manipulation" title="InfraCtrl Home">
-            {/* Mobile: Logo Icon only without text "InfraCtrl" */}
-            <BrandLogo iconOnly size="md" className="sm:hidden" />
-            {/* Desktop / Tablets: Full Brand Logo */}
-            <BrandLogo size="md" className="hidden sm:inline-flex" />
+            <BrandLogo responsive size="md" />
           </Link>
           <span className="text-[10px] uppercase font-mono tracking-widest px-2 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-semibold select-none pointer-events-none cursor-default">
             Console
