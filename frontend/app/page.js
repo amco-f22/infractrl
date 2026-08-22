@@ -3,6 +3,7 @@
 import LandingNav from "@/components/landing/LandingNav";
 import Hero from "@/components/landing/Hero";
 import Features from "@/components/landing/Features";
+import PolicySection from "@/components/landing/PolicySection";
 import DashboardSection from "@/components/landing/DashboardSection";
 import HowItWorks from "@/components/landing/HowItWorks";
 import TechStack from "@/components/landing/TechStack";
@@ -19,6 +20,7 @@ export default function Home() {
       <main>
         <Hero />
         <Features />
+        <PolicySection />
         <DashboardSection />
         <HowItWorks />
         <TechStack />

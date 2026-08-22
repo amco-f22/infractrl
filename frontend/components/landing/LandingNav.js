@@ -12,8 +12,9 @@ const REPO_URL = "https://github.com/amco-f22/infractrl";
 
 const links = [
   { label: "Features", href: "#features" },
-  { label: "How it works", href: "#how-it-works" },
+  { label: "Policies", href: "#policies" },
   { label: "Dashboard", href: "#dashboard" },
+  { label: "How it works", href: "#how-it-works" },
   { label: "Stack", href: "#stack" },
 ];
 

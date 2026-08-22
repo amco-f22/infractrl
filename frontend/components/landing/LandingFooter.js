@@ -48,9 +48,10 @@ export default function LandingFooter() {
           <div className="text-zinc-400 font-medium">Product</div>
           <ul className="mt-3 space-y-2 text-zinc-500">
             <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
+            <li><a href="#policies" className="hover:text-white transition-colors">Policies &amp; Governance</a></li>
+            <li><a href="#dashboard" className="hover:text-white transition-colors">Fleet Dashboard</a></li>
             <li><a href="#how-it-works" className="hover:text-white transition-colors">How it works</a></li>
             <li><a href="#stack" className="hover:text-white transition-colors">Tech stack</a></li>
-            <li><Link href="/dashboard" className="hover:text-white transition-colors">Fleet Dashboard</Link></li>
           </ul>
         </div>
 
