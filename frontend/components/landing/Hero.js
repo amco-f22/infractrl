@@ -105,47 +105,26 @@ export default function Hero() {
             </a>
           </div>
 
-          {/* Frosted Glass Impact Metric Dock */}
-          <div className="mt-8 sm:mt-10 inline-flex flex-wrap sm:flex-nowrap items-center justify-center gap-4 sm:gap-7 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl px-5 sm:px-7 py-3 sm:py-3.5 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.08)]">
-            <div className="flex items-center gap-2.5 text-left">
-              <span className="grid h-7 w-7 sm:h-8 sm:w-8 shrink-0 place-items-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
-                <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </span>
-              <div>
-                <div className="text-xs sm:text-sm font-semibold text-white font-mono tracking-tight">
-                  &lt; 5 min
-                </div>
-                <div className="text-[10.5px] sm:text-[11px] text-zinc-400">Avg Provisioning</div>
-              </div>
-            </div>
+          {/* Minimalist Monospace Inline Bar (Option 3) */}
+          <div className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3.5 text-xs sm:text-[13px] font-mono">
+            <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/[0.04] text-zinc-300 shadow-[0_0_20px_rgba(16,185,129,0.08)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
+              <span className="text-emerald-300 font-semibold">5-min</span> spinup
+            </span>
 
-            <div className="hidden sm:block h-6 w-px bg-white/10" />
+            <span className="text-zinc-600 hidden sm:inline select-none">·</span>
 
-            <div className="flex items-center gap-2.5 text-left">
-              <span className="grid h-7 w-7 sm:h-8 sm:w-8 shrink-0 place-items-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-400">
-                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </span>
-              <div>
-                <div className="text-xs sm:text-sm font-semibold text-white font-mono tracking-tight">
-                  0 Tickets
-                </div>
-                <div className="text-[10.5px] sm:text-[11px] text-zinc-400">DevOps Queue</div>
-              </div>
-            </div>
+            <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/[0.04] text-zinc-300 shadow-[0_0_20px_rgba(34,211,238,0.08)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
+              <span className="text-cyan-300 font-semibold">0</span> tickets filed
+            </span>
 
-            <div className="hidden sm:block h-6 w-px bg-white/10" />
+            <span className="text-zinc-600 hidden sm:inline select-none">·</span>
 
-            <div className="flex items-center gap-2.5 text-left">
-              <span className="grid h-7 w-7 sm:h-8 sm:w-8 shrink-0 place-items-center rounded-xl border border-teal-500/20 bg-teal-500/10 text-teal-400">
-                <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </span>
-              <div>
-                <div className="text-xs sm:text-sm font-semibold text-white font-mono tracking-tight">
-                  $0 Waste
-                </div>
-                <div className="text-[10.5px] sm:text-[11px] text-zinc-400">Auto-Teardown</div>
-              </div>
-            </div>
+            <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-teal-500/25 bg-teal-500/[0.04] text-zinc-300 shadow-[0_0_20px_rgba(45,212,191,0.08)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse shadow-[0_0_8px_#2dd4bf]" />
+              <span className="text-teal-300 font-semibold">$0</span> idle waste
+            </span>
           </div>
         </motion.div>
 
