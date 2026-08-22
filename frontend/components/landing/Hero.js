@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Zap, ShieldCheck, Coins } from "lucide-react";
 import HeroPreview from "./HeroPreview";
 
 const REPO_URL = "https://github.com/amco-f22/infractrl";
@@ -105,21 +105,46 @@ export default function Hero() {
             </a>
           </div>
 
-          {/* Impact Stats */}
-          <div className="mt-8 sm:mt-10 flex items-center justify-center gap-6 sm:gap-10 text-center">
-            <div>
-              <div className="text-lg sm:text-xl font-semibold text-white">Days → Min</div>
-              <div className="text-[11px] sm:text-xs text-zinc-500 mt-0.5">Provisioning</div>
+          {/* Frosted Glass Impact Metric Dock */}
+          <div className="mt-8 sm:mt-10 inline-flex flex-wrap sm:flex-nowrap items-center justify-center gap-4 sm:gap-7 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl px-5 sm:px-7 py-3 sm:py-3.5 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.08)]">
+            <div className="flex items-center gap-2.5 text-left">
+              <span className="grid h-7 w-7 sm:h-8 sm:w-8 shrink-0 place-items-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
+                <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </span>
+              <div>
+                <div className="text-xs sm:text-sm font-semibold text-white font-mono tracking-tight">
+                  &lt; 5 min
+                </div>
+                <div className="text-[10.5px] sm:text-[11px] text-zinc-400">Avg Provisioning</div>
+              </div>
             </div>
-            <div className="h-8 w-px bg-white/10" />
-            <div>
-              <div className="text-lg sm:text-xl font-semibold text-white">Zero</div>
-              <div className="text-[11px] sm:text-xs text-zinc-500 mt-0.5">Tickets Filed</div>
+
+            <div className="hidden sm:block h-6 w-px bg-white/10" />
+
+            <div className="flex items-center gap-2.5 text-left">
+              <span className="grid h-7 w-7 sm:h-8 sm:w-8 shrink-0 place-items-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-400">
+                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </span>
+              <div>
+                <div className="text-xs sm:text-sm font-semibold text-white font-mono tracking-tight">
+                  0 Tickets
+                </div>
+                <div className="text-[10.5px] sm:text-[11px] text-zinc-400">DevOps Queue</div>
+              </div>
             </div>
-            <div className="h-8 w-px bg-white/10" />
-            <div>
-              <div className="text-lg sm:text-xl font-semibold text-white">$0</div>
-              <div className="text-[11px] sm:text-xs text-zinc-500 mt-0.5">Idle Waste</div>
+
+            <div className="hidden sm:block h-6 w-px bg-white/10" />
+
+            <div className="flex items-center gap-2.5 text-left">
+              <span className="grid h-7 w-7 sm:h-8 sm:w-8 shrink-0 place-items-center rounded-xl border border-teal-500/20 bg-teal-500/10 text-teal-400">
+                <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </span>
+              <div>
+                <div className="text-xs sm:text-sm font-semibold text-white font-mono tracking-tight">
+                  $0 Waste
+                </div>
+                <div className="text-[10.5px] sm:text-[11px] text-zinc-400">Auto-Teardown</div>
+              </div>
             </div>
           </div>
         </motion.div>
