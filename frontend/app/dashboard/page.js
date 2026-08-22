@@ -971,9 +971,6 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/10 pb-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400/90 font-mono">
-                Fleet Console
-              </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-green-400/30 bg-green-400/10 px-2.5 py-0.5 text-[10px] text-green-300 font-mono">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
                 Live Telemetry

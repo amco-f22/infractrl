@@ -79,7 +79,7 @@ export default function Hero() {
                 href="/dashboard"
                 className="group relative inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-7 py-4 sm:py-3.5 text-sm sm:text-base font-semibold text-black hover:bg-zinc-100 transition-all duration-200 shadow-[0_0_30px_rgba(255,255,255,0.25)] active:scale-[0.98] touch-manipulation"
               >
-                <span>Launch Fleet Console</span>
+                <span>Launch Console</span>
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </Link>
             ) : (

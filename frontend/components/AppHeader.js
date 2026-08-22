@@ -20,7 +20,7 @@ export default function AppHeader() {
         {/* Brand Logo */}
         <Link href="/" className="flex items-center gap-2.5 group touch-manipulation">
           <BrandLogo size="md" />
-          <span className="text-[10px] uppercase font-mono tracking-widest px-2 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-semibold hidden xs:inline-block">
+          <span className="text-[10px] uppercase font-mono tracking-widest px-2 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-semibold inline-block">
             Console
           </span>
         </Link>
