@@ -105,16 +105,22 @@ export default function Hero() {
             </a>
           </div>
 
-          {/* Social Proof Bar */}
-          <div className="mt-8 sm:mt-10 flex items-center justify-center gap-3 sm:gap-5 text-xs sm:text-sm text-zinc-500">
-            <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
-              Open Source
-            </span>
-            <span className="text-zinc-700">·</span>
-            <span>Terraform-Native</span>
-            <span className="text-zinc-700">·</span>
-            <span>MIT Licensed</span>
+          {/* Impact Stats */}
+          <div className="mt-8 sm:mt-10 flex items-center justify-center gap-6 sm:gap-10 text-center">
+            <div>
+              <div className="text-lg sm:text-xl font-semibold text-white">Days → Min</div>
+              <div className="text-[11px] sm:text-xs text-zinc-500 mt-0.5">Provisioning</div>
+            </div>
+            <div className="h-8 w-px bg-white/10" />
+            <div>
+              <div className="text-lg sm:text-xl font-semibold text-white">Zero</div>
+              <div className="text-[11px] sm:text-xs text-zinc-500 mt-0.5">Tickets Filed</div>
+            </div>
+            <div className="h-8 w-px bg-white/10" />
+            <div>
+              <div className="text-lg sm:text-xl font-semibold text-white">$0</div>
+              <div className="text-[11px] sm:text-xs text-zinc-500 mt-0.5">Idle Waste</div>
+            </div>
           </div>
         </motion.div>
 

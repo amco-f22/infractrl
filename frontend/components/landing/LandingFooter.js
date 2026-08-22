@@ -30,34 +30,9 @@ export default function LandingFooter() {
         strategy="lazyOnload"
       />
 
-      {/* Contact CTA */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-12 sm:pt-16 pb-10 sm:pb-12 text-center">
-        <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 font-medium">
-          Still building
-        </p>
-        <h2 className="mt-4 text-2xl sm:text-4xl font-semibold tracking-[-0.02em] text-white">
-          Want this for your team?
-        </h2>
-        <p className="mt-4 text-sm sm:text-base text-zinc-400 max-w-md mx-auto leading-relaxed">
-          InfraCtrl is a work in progress. If you&apos;re interested in
-          self-serve infrastructure for your org, let&apos;s have a quick chat.
-        </p>
-        <div className="mt-8">
-          <button
-            onClick={openCalendly}
-            className="group inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-6 py-3.5 text-sm font-medium text-white hover:bg-white/[0.08] hover:border-white/25 transition-all duration-200 active:scale-[0.98] cursor-pointer"
-          >
-            <span>Get in Touch</span>
-            <ArrowUpRight className="w-4 h-4 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div className="border-t border-white/10" />
-
-      {/* Footer columns */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+      {/* Footer grid with CTA integrated as a column */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16 grid grid-cols-1 md:grid-cols-4 gap-10 md:gap-8">
+        {/* Brand column */}
         <div>
           <div className="flex items-center gap-2.5">
             <BrandLogo size="md" />
@@ -68,6 +43,7 @@ export default function LandingFooter() {
           </p>
         </div>
 
+        {/* Product links */}
         <div className="text-xs sm:text-sm">
           <div className="text-zinc-400 font-medium">Product</div>
           <ul className="mt-3 space-y-2 text-zinc-500">
@@ -78,6 +54,7 @@ export default function LandingFooter() {
           </ul>
         </div>
 
+        {/* Built by */}
         <div className="text-xs sm:text-sm">
           <div className="text-zinc-400 font-medium">Built by</div>
           <p className="mt-3 text-zinc-300 font-medium">Aman Nikhare</p>
@@ -106,6 +83,21 @@ export default function LandingFooter() {
               </svg>
             </a>
           </div>
+        </div>
+
+        {/* Contact CTA column */}
+        <div className="text-xs sm:text-sm">
+          <div className="text-zinc-400 font-medium">Get in Touch</div>
+          <p className="mt-3 text-zinc-500 leading-relaxed">
+            InfraCtrl is a work in progress. Interested in self-serve infra for your org?
+          </p>
+          <button
+            onClick={openCalendly}
+            className="group mt-4 inline-flex items-center gap-1.5 text-sm text-white hover:text-emerald-400 transition-colors cursor-pointer"
+          >
+            <span className="font-medium">Book a quick chat</span>
+            <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </button>
         </div>
       </div>
 
