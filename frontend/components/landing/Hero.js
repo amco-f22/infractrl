@@ -105,20 +105,16 @@ export default function Hero() {
             </a>
           </div>
 
-          {/* Micro Feature / Trust Bar */}
-          <div className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs font-mono text-zinc-400">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02]">
-              <span className="text-emerald-400">✓</span> 5-Min Spinup
+          {/* Social Proof Bar */}
+          <div className="mt-8 sm:mt-10 flex items-center justify-center gap-3 sm:gap-5 text-xs sm:text-sm text-zinc-500">
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+              Open Source
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02]">
-              <span className="text-cyan-400">✓</span> IP-Locked SGs
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02]">
-              <span className="text-purple-400">✓</span> Auto-Teardown
-            </span>
-            <span className="hidden xs:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02]">
-              <span className="text-green-400">✓</span> $0 Idle Waste
-            </span>
+            <span className="text-zinc-700">·</span>
+            <span>Terraform-Native</span>
+            <span className="text-zinc-700">·</span>
+            <span>MIT Licensed</span>
           </div>
         </motion.div>
 
