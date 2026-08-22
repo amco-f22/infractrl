@@ -27,7 +27,7 @@ async function proxyRequest(request, paramsPromise, method) {
   // 2. Construct Backend URL
   const params = await paramsPromise;
   const path = params.path.join("/");
-  const backendUrl = process.env.BACKEND_API_URL || "http://localhost:8000";
+  const backendUrl = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   
   // Clean up the path construction since frontend calls can vary between `/api/backend/api/...` and `/api/backend/admin/...`
   const sanitizedPath = path.startsWith("api/") ? path.substring(4) : path;
@@ -49,6 +49,7 @@ async function proxyRequest(request, paramsPromise, method) {
     const fetchOptions = {
       method,
       headers,
+      cache: "no-store",
     };
     
     // Only parse body if it's not a GET/HEAD

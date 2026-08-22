@@ -1,14 +1,15 @@
-"use client";
-
+import dynamic from "next/dynamic";
 import LandingNav from "@/components/landing/LandingNav";
 import Hero from "@/components/landing/Hero";
-import Features from "@/components/landing/Features";
-import PolicySection from "@/components/landing/PolicySection";
-import DashboardSection from "@/components/landing/DashboardSection";
-import HowItWorks from "@/components/landing/HowItWorks";
-import TechStack from "@/components/landing/TechStack";
-import CTASection from "@/components/landing/CTASection";
-import LandingFooter from "@/components/landing/LandingFooter";
+
+// Dynamic code-splitting for below-the-fold sections to optimize initial mobile bundle
+const Features = dynamic(() => import("@/components/landing/Features"));
+const PolicySection = dynamic(() => import("@/components/landing/PolicySection"));
+const DashboardSection = dynamic(() => import("@/components/landing/DashboardSection"));
+const HowItWorks = dynamic(() => import("@/components/landing/HowItWorks"));
+const TechStack = dynamic(() => import("@/components/landing/TechStack"));
+const CTASection = dynamic(() => import("@/components/landing/CTASection"));
+const LandingFooter = dynamic(() => import("@/components/landing/LandingFooter"));
 
 export default function Home() {
   return (

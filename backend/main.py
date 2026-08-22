@@ -7,8 +7,9 @@ import hmac
 import hashlib
 
 import psycopg2
-import httpx
+from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
+import httpx
 from fastapi import FastAPI, HTTPException, status, BackgroundTasks, Header, Query, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -57,9 +58,6 @@ def is_admin(email: str = Depends(get_current_user_email)):
         raise HTTPException(status_code=403, detail="Admin privileges required")
     return email
 
-# Database Configuration
-DATABASE_URL = os.getenv("DATABASE_URL")
-
 # Cost estimation map (matches frontend PRICING)
 PRICING = {
     "postgres": {"small": 15, "medium": 28, "large": 56},
@@ -75,15 +73,94 @@ def mask_connection_string(conn_str):
         return None
     return re.sub(r'://([^:]+):([^@]+)@', r'://\1:***@', conn_str)
 
+# Database Configuration & Threaded Connection Pool
+DATABASE_URL = os.getenv("DATABASE_URL")
+db_pool = None
+
+def init_db_pool():
+    global db_pool
+    if DATABASE_URL and db_pool is None:
+        try:
+            db_pool = pool.ThreadedConnectionPool(
+                minconn=2,
+                maxconn=20,
+                dsn=DATABASE_URL,
+                cursor_factory=RealDictCursor,
+                keepalives=1,
+                keepalives_idle=30,
+                keepalives_interval=10,
+                keepalives_count=5
+            )
+            print("PostgreSQL Threaded Connection Pool initialized successfully.")
+        except Exception as e:
+            print(f"Warning: Could not initialize DB pool ({e}), falling back to direct connections.")
+            db_pool = None
+
+@app.on_event("startup")
+def on_startup():
+    init_db_pool()
+
+@app.on_event("shutdown")
+def on_shutdown():
+    global db_pool
+    if db_pool:
+        try:
+            db_pool.closeall()
+        except Exception:
+            pass
+
+class PooledConnectionWrapper:
+    """
+    Transparent wrapper for pooled psycopg2 connections.
+    Intercepts close() to return connection to pool instead of terminating TCP socket.
+    """
+    def __init__(self, conn, p):
+        self._conn = conn
+        self._pool = p
+        self._returned = False
+
+    def close(self):
+        if not self._returned:
+            self._returned = True
+            try:
+                if not self._conn.closed:
+                    self._conn.rollback() # Reset transaction state for next borrower
+                self._pool.putconn(self._conn)
+            except Exception:
+                try:
+                    self._conn.close()
+                except Exception:
+                    pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
 def get_db_connection():
     """
-    Establishes a connection to the PostgreSQL database.
-    Returns:
-        psycopg2 connection object
+    Acquires an active connection from the pool or opens a direct connection as fallback.
     """
+    global db_pool
+    if db_pool is None and DATABASE_URL:
+        init_db_pool()
+        
+    if db_pool is not None:
+        try:
+            conn = db_pool.getconn()
+            if conn and not conn.closed:
+                return PooledConnectionWrapper(conn, db_pool)
+            elif conn and conn.closed:
+                db_pool.putconn(conn, close=True)
+        except Exception as e:
+            print(f"Pool acquire error ({e}), falling back to direct connection.")
+
     try:
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-        return conn
+        return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     except Exception as e:
         print(f"Error connecting to database: {e}")
         raise HTTPException(

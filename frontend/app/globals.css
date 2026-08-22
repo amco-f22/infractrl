@@ -41,19 +41,6 @@ body {
     linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 56px 56px, 56px 56px;
-  background-attachment: fixed;
-}
-
-/* YC Startup Editorial Typography Tokens */
-.font-editorial {
-  font-family: var(--font-editorial), "PP Editorial New", "Cormorant Garamond", Georgia, serif;
-}
-
-.font-italic-accent {
-  font-family: var(--font-editorial), "PP Editorial New", "Cormorant Garamond", Georgia, serif;
-  font-style: italic;
-  font-weight: 500;
-  letter-spacing: -0.01em;
 }
 
 .font-mono {

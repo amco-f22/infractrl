@@ -873,10 +873,9 @@ export default function DashboardPage() {
     }
   };
 
-  // Initial data load
+  // Initial data load — parallelized
   useEffect(() => {
-    fetchRequests();
-    fetchAuditLogs();
+    Promise.allSettled([fetchRequests(), fetchAuditLogs()]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
