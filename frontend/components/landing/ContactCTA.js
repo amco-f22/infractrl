@@ -9,7 +9,7 @@ export default function ContactCTA() {
     e.preventDefault();
     if (typeof window !== "undefined" && window.Calendly) {
       window.Calendly.initPopupWidget({
-        url: "https://calendly.com/creatvaman/30min",
+        url: "https://calendly.com/creatvaman/30min?background_color=111111&text_color=e4e4e7&primary_color=34d399",
       });
     }
   };
