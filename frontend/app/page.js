@@ -7,7 +7,6 @@ import DashboardSection from "@/components/landing/DashboardSection";
 import HowItWorks from "@/components/landing/HowItWorks";
 import TechStack from "@/components/landing/TechStack";
 import CTASection from "@/components/landing/CTASection";
-import ContactCTA from "@/components/landing/ContactCTA";
 import LandingFooter from "@/components/landing/LandingFooter";
 
 export default function Home() {
@@ -24,7 +23,6 @@ export default function Home() {
         <HowItWorks />
         <TechStack />
         <CTASection />
-        <ContactCTA />
       </main>
       <LandingFooter />
     </div>
